@@ -143,13 +143,30 @@ typedef unsigned long long int	ISC_UINT64;
 /*******************************************************************/
 
 #ifndef ISC_TIMESTAMP_DEFINED
+
 typedef int			ISC_DATE;
+
 typedef unsigned int	ISC_TIME;
+
+typedef struct
+{
+	ISC_TIME time_time;
+	ISC_SHORT time_displacement;
+} ISC_TIME_TZ;
+
 typedef struct
 {
 	ISC_DATE timestamp_date;
 	ISC_TIME timestamp_time;
 } ISC_TIMESTAMP;
+
+typedef struct
+{
+	ISC_DATE timestamp_date;
+	ISC_TIME timestamp_time;
+	ISC_SHORT timestamp_displacement;
+} ISC_TIMESTAMP_TZ;
+
 #define ISC_TIMESTAMP_DEFINED
 #endif	/* ISC_TIMESTAMP_DEFINED */
 

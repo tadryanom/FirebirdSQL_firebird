@@ -1488,8 +1488,18 @@ void put_data(burp_rel* relation)
 			add_byte(blr, field->fld_type);
 			break;
 
+		case blr_timestamp_tz:
+			alignment = type_alignments[dtype_timestamp_tz];
+			add_byte(blr, field->fld_type);
+			break;
+
 		case blr_sql_time:
 			alignment = type_alignments[dtype_sql_time];
+			add_byte(blr, field->fld_type);
+			break;
+
+		case blr_sql_time_tz:
+			alignment = type_alignments[dtype_sql_time_tz];
 			add_byte(blr, field->fld_type);
 			break;
 

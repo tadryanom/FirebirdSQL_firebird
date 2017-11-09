@@ -100,6 +100,69 @@ namespace
 
 		return lock.release();
 	}
+
+	class UtcConversor
+	{
+	public:
+		UtcConversor(record_param* aRpb)
+			: rpb(aRpb)
+		{
+			convert(rpb, -1);
+		}
+
+		~UtcConversor()
+		{
+			convert(rpb, 1);
+		}
+
+	public:
+		static void convert(record_param* rpb, int direction)
+		{
+			fb_assert(rpb && rpb->rpb_record && rpb->rpb_record->getFormat());
+
+			const Format* format = rpb->rpb_record->getFormat();
+			UCHAR* data = rpb->rpb_record->getData();
+
+			tm times = {0};
+			int fractions;
+
+			for (USHORT i = 0; i < format->fmt_count; ++i)
+			{
+				const dsc& desc = format->fmt_desc[i];
+
+				switch (desc.dsc_dtype)
+				{
+					case dtype_sql_time_tz:
+					{
+						ISC_TIME_TZ* valueTz = reinterpret_cast<ISC_TIME_TZ*>(data + (IPTR) desc.dsc_address);
+						ISC_TIME* value = (ISC_TIME*) valueTz;
+
+						SINT64 ticks = (SINT64) *value;
+
+						ticks += valueTz->time_displacement * 60 * ISC_TIME_SECONDS_PRECISION * direction;
+						//// FIXME: ticks?
+						break;
+					}
+
+					case dtype_timestamp_tz:
+					{
+						ISC_TIMESTAMP_TZ* valueTz = reinterpret_cast<ISC_TIMESTAMP_TZ*>(data + (IPTR) desc.dsc_address);
+						ISC_TIMESTAMP* value = (ISC_TIMESTAMP*) valueTz;
+
+						SINT64 ticks = ((SINT64) value->timestamp_date) * TimeStamp::ISC_TICKS_PER_DAY +
+							(SINT64) value->timestamp_time;
+
+						ticks += valueTz->timestamp_displacement * 60 * ISC_TIME_SECONDS_PRECISION * direction;
+						//// FIXME: ticks?
+						break;
+					}
+				}
+			}
+		}
+
+	private:
+		record_param* rpb;
+	};
 }
 
 
@@ -365,6 +428,11 @@ bool DPM_chain( thread_db* tdbb, record_param* org_rpb, record_param* new_rpb)
 #endif
 
 	record_param temp = *org_rpb;
+
+	// This function is currently called only by VIO_erase and new_rpb does not have a record.
+	///UtcConversor utcConversor(new_rpb);
+	fb_assert(new_rpb->rpb_length == 0);
+
 	const Compressor dcc(*tdbb->getDefaultPool(), new_rpb->rpb_length, new_rpb->rpb_address);
 	const ULONG size = (ULONG) dcc.getPackedLength();
 
@@ -2079,6 +2147,7 @@ void DPM_store( thread_db* tdbb, record_param* rpb, PageStack& stack, const Jrd:
 		rpb->rpb_f_line, rpb->rpb_flags);
 #endif
 
+	UtcConversor utcConversor(rpb);
 	const Compressor dcc(*tdbb->getDefaultPool(), rpb->rpb_length, rpb->rpb_address);
 	const ULONG size = (ULONG) dcc.getPackedLength();
 
@@ -2303,6 +2372,8 @@ void DPM_update( thread_db* tdbb, record_param* rpb, PageStack* stack, const jrd
 	CCH_tra_precedence(tdbb, &rpb->getWindow(tdbb), rpb->rpb_transaction_nr);
 	CCH_MARK(tdbb, &rpb->getWindow(tdbb));
 	data_page* page = (data_page*) rpb->getWindow(tdbb).win_buffer;
+
+	///UtcConversor utcConversor(rpb);
 	const Compressor dcc(*tdbb->getDefaultPool(), rpb->rpb_length, rpb->rpb_address);
 	const ULONG size = (ULONG) dcc.getPackedLength();
 
@@ -3724,6 +3795,7 @@ static void store_big_record(thread_db* tdbb,
 
 	// What's left fits on a page.  Luckily, we don't have to store it ourselves.
 
+	// rpb is already converted to UTC
 	const Compressor dcc(*tdbb->getDefaultPool(), in - rpb->rpb_address, rpb->rpb_address);
 	size = (ULONG) dcc.getPackedLength();
 	rhdf* header = (rhdf*) locate_space(tdbb, rpb, (SSHORT) (RHDF_SIZE + size), stack, NULL, type);

@@ -155,7 +155,9 @@ const int FLOAT_LEN		= 14;	// -1.2345678E+38
 const int DOUBLE_LEN		= 23;	// -1.234567890123456E+300
 const int DATE_LEN		= 11;	// 11 for date only
 const int DATETIME_LEN		= 25;	// 25 for date-time
+const int DATETIME_TZ_LEN	= 30;	// 30 for date-time-tz
 const int TIME_ONLY_LEN		= 13;	// 13 for time only
+const int TIME_TZ_ONLY_LEN	= 19;	// 19 for time-tz only
 const int DATE_ONLY_LEN		= 11;
 const int BOOLEAN_LEN		= 7;	// <false>
 const int UNKNOWN_LEN		= 20;	// Unknown type: %d
@@ -4900,7 +4902,7 @@ static processing_state frontend_set(const char* cmd, const char* const* parms,
 		{SetOptions::transaction, "TRANSACTION", 5},
 		{SetOptions::terminator, "TERMINATOR", 4},
 		{SetOptions::names, "NAMES", 0},
-		{SetOptions::time, "TIME", 0},
+		//// FIXME: {SetOptions::time, "TIME", 0},
 //#ifdef DEV_BUILD
 		{SetOptions::sqlda_display, "SQLDA_DISPLAY", 0},
 //#endif
@@ -7393,6 +7395,7 @@ static unsigned print_item(TEXT** s, const IsqlVar* var, const unsigned length)
 			}
 
 		case SQL_TIMESTAMP:
+		case SQL_TIMESTAMP_TZ:
 			isc_decode_timestamp(var->value.asDateTime, &times);
 
 			if (isqlGlob.SQL_dialect > SQL_DIALECT_V5)
@@ -7416,21 +7419,37 @@ static unsigned print_item(TEXT** s, const IsqlVar* var, const unsigned length)
 							alpha_months[times.tm_mon], times.tm_year + 1900);
 			}
 
-			sprintf(p, "%-*.*s ", length, length, d);
-			if (setValues.List) {
-				isqlGlob.printf("%s%s", d, NEWLINE);
+			if (dtype == SQL_TIMESTAMP_TZ)
+			{
+				sprintf(d + strlen(d), "%+03d:%02d", var->value.asDateTimeTz->timestamp_displacement / 60,
+					abs((int) var->value.asDateTimeTz->timestamp_displacement) % 60);
 			}
+
+			sprintf(p, "%-*.*s ", length, length, d);
+
+			if (setValues.List)
+				isqlGlob.printf("%s%s", d, NEWLINE);
+
 			break;
 
 		case SQL_TYPE_TIME:
+		case SQL_TIME_TZ:
 			isc_decode_sql_time(var->value.asTime, &times);
 			sprintf(d, "%2.2d:%2.2d:%2.2d.%4.4" ULONGFORMAT,
 					times.tm_hour, times.tm_min, times.tm_sec,
 					(*var->value.asTime) % ISC_TIME_SECONDS_PRECISION);
-			sprintf(p, "%-*.*s ", length, length, d);
-			if (setValues.List) {
-				isqlGlob.printf("%s%s", d, NEWLINE);
+
+			if (dtype == SQL_TIME_TZ)
+			{
+				sprintf(d + strlen(d), "%+03d:%02d", var->value.asTimeTz->time_displacement / 60,
+					abs((int) var->value.asTimeTz->time_displacement) % 60);
 			}
+
+			sprintf(p, "%-*.*s ", length, length, d);
+
+			if (setValues.List)
+				isqlGlob.printf("%s%s", d, NEWLINE);
+
 			break;
 
 		case SQL_TYPE_DATE:
@@ -8087,8 +8106,14 @@ static unsigned process_message_display(Firebird::IMessageMetadata* message, uns
 			else
 				disp_length = DATE_ONLY_LEN;
 			break;
+		case SQL_TIMESTAMP_TZ:
+			disp_length = DATETIME_TZ_LEN;
+			break;
 		case SQL_TYPE_TIME:
 			disp_length = TIME_ONLY_LEN;
+			break;
+		case SQL_TIME_TZ:
+			disp_length = TIME_TZ_ONLY_LEN;
 			break;
 		case SQL_TYPE_DATE:
 			disp_length = DATE_ONLY_LEN;

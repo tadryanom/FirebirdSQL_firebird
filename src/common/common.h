@@ -667,13 +667,30 @@ extern "C" int remove(const char* path);
 /* data type definitions */
 
 #ifndef ISC_TIMESTAMP_DEFINED
+
 typedef SLONG ISC_DATE;
+
 typedef ULONG ISC_TIME;
+
+struct ISC_TIME_TZ
+{
+	ISC_TIME time_time;
+	ISC_SHORT time_displacement;
+};
+
 struct ISC_TIMESTAMP
 {
 	ISC_DATE timestamp_date;
 	ISC_TIME timestamp_time;
 };
+
+struct ISC_TIMESTAMP_TZ
+{
+	ISC_DATE timestamp_date;
+	ISC_TIME timestamp_time;
+	ISC_SHORT timestamp_displacement;
+};
+
 #define ISC_TIMESTAMP_DEFINED
 #endif	/* ISC_TIMESTAMP_DEFINED */
 

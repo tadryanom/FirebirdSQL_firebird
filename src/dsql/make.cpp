@@ -53,9 +53,9 @@
 #include "../jrd/jrd.h"
 #include "../jrd/ods.h"
 #include "../jrd/ini.h"
+#include "../jrd/cvt_proto.h"
 #include "../jrd/scl_proto.h"
 #include "../common/dsc_proto.h"
-#include "../common/cvt.h"
 #include "../yvalve/why_proto.h"
 #include "../common/config/config.h"
 #include "../common/StatusArg.h"
@@ -145,23 +145,26 @@ ValueExprNode* MAKE_constant(const char* str, dsql_constant_type numeric_flag)
 		{
 			// Setup the constant's descriptor
 
+			EXPECT_DATETIME expect;
+
 			switch (numeric_flag)
 			{
-			case CONSTANT_DATE:
-				literal->litDesc.dsc_dtype = dtype_sql_date;
-				break;
-			case CONSTANT_TIME:
-				literal->litDesc.dsc_dtype = dtype_sql_time;
-				break;
-			case CONSTANT_TIMESTAMP:
-				literal->litDesc.dsc_dtype = dtype_timestamp;
-				break;
+				case CONSTANT_DATE:
+					expect = expect_sql_date;
+					break;
+
+				case CONSTANT_TIME:
+					expect = expect_sql_time_tz;
+					break;
+
+				case CONSTANT_TIMESTAMP:
+					expect = expect_timestamp_tz;
+					break;
+
+				default:
+					fb_assert(false);
+					return NULL;
 			}
-			literal->litDesc.dsc_sub_type = 0;
-			literal->litDesc.dsc_scale = 0;
-			literal->litDesc.dsc_length = type_lengths[literal->litDesc.dsc_dtype];
-			literal->litDesc.dsc_address =
-				FB_NEW_POOL(*tdbb->getDefaultPool()) UCHAR[literal->litDesc.dsc_length];
 
 			// Set up a descriptor to point to the string
 
@@ -175,7 +178,63 @@ ValueExprNode* MAKE_constant(const char* str, dsql_constant_type numeric_flag)
 
 			// Now invoke the string_to_date/time/timestamp routines
 
-			CVT_move(&tmp, &literal->litDesc, tdbb->getAttachment()->att_dec_status, ERRD_post);
+			ISC_TIMESTAMP_TZ ts;
+			bool tz;
+			CVT_string_to_datetime(&tmp, &ts, &tz, expect, &EngineCallbacks::instance);
+
+			switch (numeric_flag)
+			{
+				case CONSTANT_DATE:
+					literal->litDesc.dsc_dtype = dtype_sql_date;
+					break;
+
+				case CONSTANT_TIME:
+					literal->litDesc.dsc_dtype = tz ? dtype_sql_time_tz : dtype_sql_time;
+					break;
+
+				case CONSTANT_TIMESTAMP:
+					literal->litDesc.dsc_dtype = tz ? dtype_timestamp_tz : dtype_timestamp;
+					break;
+			}
+
+			literal->litDesc.dsc_sub_type = 0;
+			literal->litDesc.dsc_scale = 0;
+			literal->litDesc.dsc_length = type_lengths[literal->litDesc.dsc_dtype];
+			literal->litDesc.dsc_address =
+				FB_NEW_POOL(*tdbb->getDefaultPool()) UCHAR[literal->litDesc.dsc_length];
+
+			switch (numeric_flag)
+			{
+				case CONSTANT_DATE:
+					*(ISC_DATE*) literal->litDesc.dsc_address = ts.timestamp_date;
+					break;
+
+				case CONSTANT_TIME:
+					if (tz)
+					{
+						((ISC_TIME_TZ*) literal->litDesc.dsc_address)->time_time = ts.timestamp_time;
+						((ISC_TIME_TZ*) literal->litDesc.dsc_address)->time_displacement = ts.timestamp_displacement;
+					}
+					else
+						*(ISC_TIME*) literal->litDesc.dsc_address = ts.timestamp_time;
+					break;
+
+				case CONSTANT_TIMESTAMP:
+					if (tz)
+					{
+						((ISC_TIMESTAMP_TZ*) literal->litDesc.dsc_address)->timestamp_date = ts.timestamp_date;
+						((ISC_TIMESTAMP_TZ*) literal->litDesc.dsc_address)->timestamp_time = ts.timestamp_time;
+						((ISC_TIMESTAMP_TZ*) literal->litDesc.dsc_address)->timestamp_displacement =
+							ts.timestamp_displacement;
+					}
+					else
+					{
+						((ISC_TIMESTAMP*) literal->litDesc.dsc_address)->timestamp_date = ts.timestamp_date;
+						((ISC_TIMESTAMP*) literal->litDesc.dsc_address)->timestamp_time = ts.timestamp_time;
+					}
+					break;
+			}
+
 			break;
 		}
 

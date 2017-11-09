@@ -8313,6 +8313,76 @@ void SetSessionNode::execute(thread_db* tdbb, dsql_req* request, jrd_tra** /*tra
 //--------------------
 
 
+void SetTimeZoneNode::execute(thread_db* tdbb, dsql_req* request, jrd_tra** /*traHandle*/) const
+{
+	Attachment* const attachment = tdbb->getAttachment();
+
+	if (local)
+		attachment->att_current_timezone = attachment->att_original_timezone;
+	else
+	{
+		const char* end = str.end();
+		const char* p = str.begin();
+
+		skipSpaces(p, end);
+
+		int sign = 1;
+
+		if (*p == '-' || *p == '+')
+		{
+			sign = *p == '-' ? -1 : 1;
+			++p;
+			skipSpaces(p, end);
+		}
+
+		int tzh = parseNumber(p, end);
+
+		skipSpaces(p, end);
+
+		unsigned tzm = 0;
+
+		if (*p == ':')
+		{
+			++p;
+			skipSpaces(p, end);
+			tzm = (unsigned) parseNumber(p, end);
+			skipSpaces(p, end);
+		}
+
+		if (p != end)
+			status_exception::raise(Arg::Gds(isc_random) << "Invalid time zone offset");	//// TODO:
+
+		if (!TimeStamp::is_valid_tz_offset(tzh * sign, tzm))
+			status_exception::raise(Arg::Gds(isc_random) << "Invalid time zone offset");	//// TODO:
+
+		attachment->att_current_timezone = (tzh * 60 + tzm) * sign;
+	}
+}
+
+void SetTimeZoneNode::skipSpaces(const char*& p, const char* end) const
+{
+	while (p < end && (*p == ' ' || *p == '\t'))
+		++p;
+}
+
+int SetTimeZoneNode::parseNumber(const char*& p, const char* end) const
+{
+	const char* start = p;
+	int n = 0;
+
+	while (p < end && *p >= '0' && *p <= '9')
+		n = n * 10 + *p++ - '0';
+
+	if (p == start)
+		status_exception::raise(Arg::Gds(isc_random) << "Invalid time zone offset");	//// TODO:
+
+	return n;
+}
+
+
+//--------------------
+
+
 StmtNode* UpdateOrInsertNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 {
 	thread_db* tdbb = JRD_get_thread_data(); // necessary?

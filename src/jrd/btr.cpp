@@ -1378,6 +1378,7 @@ USHORT BTR_key_length(thread_db* tdbb, jrd_rel* relation, index_desc* idx)
 			break;
 
 		case idx_sql_time:
+		case idx_sql_time_tz:
 			length = sizeof(ULONG);
 			break;
 
@@ -1386,6 +1387,7 @@ USHORT BTR_key_length(thread_db* tdbb, jrd_rel* relation, index_desc* idx)
 			break;
 
 		case idx_timestamp:
+		case idx_timestamp_tz:
 			length = sizeof(SINT64);
 			break;
 
@@ -1439,12 +1441,14 @@ USHORT BTR_key_length(thread_db* tdbb, jrd_rel* relation, index_desc* idx)
 			length = sizeof(double);
 			break;
 		case idx_sql_time:
+		case idx_sql_time_tz:
 			length = sizeof(ULONG);
 			break;
 		case idx_sql_date:
 			length = sizeof(ULONG);
 			break;
 		case idx_timestamp:
+		case idx_timestamp_tz:
 			length = sizeof(SINT64);
 			break;
 		case idx_numeric2:
@@ -2561,10 +2565,9 @@ static void compress(thread_db* tdbb,
 	else if (itype == idx_timestamp)
 	{
 		GDS_TIMESTAMP timestamp;
-		timestamp = MOV_get_timestamp(desc);
-		const ULONG SECONDS_PER_DAY	= 24 * 60 * 60;
+		timestamp = MOV_get_timestamp(desc);	//// FIXME: wrong for TZ
 		temp.temp_sint64 = ((SINT64) (timestamp.timestamp_date) *
-			(SINT64) (SECONDS_PER_DAY * ISC_TIME_SECONDS_PRECISION)) +
+			(SINT64) (NoThrowTimeStamp::SECONDS_PER_DAY * ISC_TIME_SECONDS_PRECISION)) +
 			(SINT64) (timestamp.timestamp_time);
 		temp_copy_length = sizeof(SINT64);
 
@@ -2595,7 +2598,17 @@ static void compress(thread_db* tdbb,
 #ifdef DEBUG_INDEXKEY
 		fprintf(stderr, "TIME %u ", temp.temp_ulong);
 #endif
+	}
+	else if (itype == idx_sql_time_tz)
+	{
+		ISC_TIME_TZ timeTz = MOV_get_sql_time_tz(desc);
+		temp.temp_ulong = TimeStamp::timeTzAtZone(timeTz, 0);
+		temp_copy_length = sizeof(ULONG);
+		temp_is_negative = false;
 
+#ifdef DEBUG_INDEXKEY
+		fprintf(stderr, "TIME TZ %u ", temp.temp_ulong);
+#endif
 	}
 	else if (desc->dsc_dtype == dtype_timestamp)
 	{
@@ -2609,7 +2622,21 @@ static void compress(thread_db* tdbb,
 #ifdef DEBUG_INDEXKEY
 		fprintf(stderr, "TIMESTAMP1 special %lg ", temp.temp_double);
 #endif
+	}
+	else if (desc->dsc_dtype == dtype_timestamp_tz)
+	{
+		ISC_TIMESTAMP_TZ timestampTz = MOV_get_timestamp_tz(desc);
+		ISC_TIMESTAMP timestamp = TimeStamp::timeStampTzAtZone(timestampTz, 0);
 
+		dsc descTimestamp;
+		descTimestamp.makeTimestamp(&timestamp);
+
+		temp.temp_double = MOV_date_to_double(&descTimestamp);
+		temp_is_negative = (temp.temp_double < 0);
+
+#ifdef DEBUG_INDEXKEY
+		fprintf(stderr, "TIMESTAMP1 special %lg ", temp.temp_double);
+#endif
 	}
 	else if (itype == idx_boolean)
 	{

@@ -397,7 +397,9 @@ static const UCHAR sort_dtypes[] =
 	SKD_bytes,					// dtype_boolean
 	SKD_dec64,					// dtype_dec64
 	SKD_dec128,					// dtype_dec128
-	SKD_dec128					// dtype_dec_fixed
+	SKD_dec128,					// dtype_dec_fixed
+	SKD_sql_time_tz,			// dtype_sql_time_tz
+	SKD_timestamp_tz			// dtype_timestamp_tz
 };
 
 
@@ -2459,7 +2461,8 @@ SortedStream* OPT_gen_sort(thread_db* tdbb, CompilerScratch* csb, const StreamLi
 
 						// International type text has a computed key
 						// Different decimal float values sometimes have same keys
-						if (IS_INTL_DATA(desc) || desc->isDecFloat())
+						// ASF: Date/time with time zones too.
+						if (IS_INTL_DATA(desc) || desc->isDecFloat() || desc->isDateTimeTz())
 							break;
 
 						--items;

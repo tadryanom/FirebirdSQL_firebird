@@ -1718,6 +1718,46 @@ public:
 };
 
 
+class SetTimeZoneNode : public SessionManagementNode
+{
+public:
+	explicit SetTimeZoneNode(MemoryPool& pool, const Firebird::string& aStr)
+		: SessionManagementNode(pool),
+		  str(pool, aStr),
+		  local(false)
+	{
+	}
+
+	explicit SetTimeZoneNode(MemoryPool& pool)
+		: SessionManagementNode(pool),
+		  str(pool),
+		  local(true)
+	{
+	}
+
+public:
+	virtual Firebird::string internalPrint(NodePrinter& printer) const
+	{
+		SessionManagementNode::internalPrint(printer);
+
+		NODE_PRINT(printer, str);
+		NODE_PRINT(printer, local);
+
+		return "SetTimeZoneNode";
+	}
+
+	virtual void execute(thread_db* tdbb, dsql_req* request, jrd_tra** traHandle) const;
+
+private:
+	void skipSpaces(const char*& p, const char* end) const;
+	int parseNumber(const char*& p, const char* end) const;
+
+public:
+	Firebird::string str;
+	bool local;
+};
+
+
 class UpdateOrInsertNode : public TypedNode<DsqlOnlyStmtNode, StmtNode::TYPE_UPDATE_OR_INSERT>
 {
 public:

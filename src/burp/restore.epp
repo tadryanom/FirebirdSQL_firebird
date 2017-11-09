@@ -3579,7 +3579,9 @@ rec_type get_data_old(BurpGlobals* tdgbl, burp_rel* relation)
 		case blr_float:
 		case blr_double:
 		case blr_timestamp:
+		case blr_timestamp_tz:
 		case blr_sql_time:
+		case blr_sql_time_tz:
 		case blr_sql_date:
 		case blr_dec64:
 		case blr_dec128:

@@ -262,6 +262,9 @@ static const TOK tokens[] =
 	{TOK_LINGER, "LINGER", true},
 	{TOK_LIST, "LIST", true},
 	{TOK_LN, "LN", true},
+	{TOK_LOCAL, "LOCAL", true},
+	{TOK_LOCALTIME, "LOCALTIME", true},
+	{TOK_LOCALTIMESTAMP, "LOCALTIMESTAMP", true},
 	{TOK_LOCK, "LOCK", true},
 	{TOK_LOG, "LOG", true},
 	{TOK_LOG10, "LOG10", true},
@@ -448,6 +451,8 @@ static const TOK tokens[] =
 	{TOK_TIME, "TIME", false},
 	{TOK_TIMESTAMP, "TIMESTAMP", false},
 	{TOK_TIMEOUT, "TIMEOUT", true},
+	{TOK_TIMEZONE_HOUR, "TIMEZONE_HOUR", true},
+	{TOK_TIMEZONE_MINUTE, "TIMEZONE_MINUTE", true},
 	{TOK_TO, "TO", false},
 	{TOK_TOTALORDER, "TOTALORDER", true},
 	{TOK_TRAILING, "TRAILING", false},
@@ -494,6 +499,7 @@ static const TOK tokens[] =
 	{TOK_WRITE, "WRITE", true},
 	{TOK_YEAR, "YEAR", false},
 	{TOK_YEARDAY, "YEARDAY", true},
+	{TOK_ZONE, "ZONE", true},
 	{TOK_NOT_LSS, "^<", false},	// Alias of !<
 	{TOK_NEQ, "^=", false},				// Alias of !=
 	{TOK_NOT_GTR, "^>", false},			// Alias of !>

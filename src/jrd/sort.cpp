@@ -797,6 +797,8 @@ void Sort::diddleKey(UCHAR* record, bool direction)
 				complement = !complement;
 			break;
 
+		//// FIXME: SKD_time_tz and SKD_timestamp_tz
+
 		case SKD_long:
 		case SKD_short:
 		case SKD_quad:
@@ -926,6 +928,24 @@ void Sort::diddleKey(UCHAR* record, bool direction)
 
 		switch (key->skd_dtype)
 		{
+		case SKD_sql_time_tz:
+			if (direction)
+			{
+				*(ISC_TIME*) p = TimeStamp::timeTzAtZone(*(ISC_TIME_TZ*) p, 0);
+				((ISC_TIME_TZ*) p)->time_displacement = 0;
+			}
+			p[3] ^= 1 << 7;
+			break;
+
+		case SKD_timestamp_tz:
+			if (direction)
+			{
+				*(ISC_TIMESTAMP*) p = TimeStamp::timeStampTzAtZone(*(ISC_TIMESTAMP_TZ*) p, 0);
+				((ISC_TIMESTAMP_TZ*) p)->timestamp_displacement = 0;
+			}
+			p[3] ^= 1 << 7;
+			break;
+
 		case SKD_timestamp:
 		case SKD_sql_time:
 		case SKD_sql_date:

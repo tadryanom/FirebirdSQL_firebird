@@ -2948,9 +2948,19 @@ static int blr_print_dtype(gds_ctl* control)
 		length = 8;
 		break;
 
+	case blr_timestamp_tz:
+		string = "timestamp_tz";
+		length = 10;
+		break;
+
 	case blr_sql_time:
 		string = "sql_time";
 		length = 4;
+		break;
+
+	case blr_sql_time_tz:
+		string = "sql_time_tz";
+		length = 6;
 		break;
 
 	case blr_sql_date:

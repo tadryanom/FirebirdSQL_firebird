@@ -408,8 +408,16 @@ void GEN_descriptor( DsqlCompilerScratch* dsqlScratch, const dsc* desc, bool tex
 		dsqlScratch->appendUChar(blr_sql_time);
 		break;
 
+	case dtype_sql_time_tz:
+		dsqlScratch->appendUChar(blr_sql_time_tz);
+		break;
+
 	case dtype_timestamp:
 		dsqlScratch->appendUChar(blr_timestamp);
+		break;
+
+	case dtype_timestamp_tz:
+		dsqlScratch->appendUChar(blr_timestamp_tz);
 		break;
 
 	case dtype_array:

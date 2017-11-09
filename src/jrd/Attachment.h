@@ -335,6 +335,9 @@ public:
 	ULONG att_ext_call_depth;				// external connection call depth, 0 for user attachment
 	TraceManager* att_trace_manager;		// Trace API manager
 
+	SSHORT att_original_timezone;
+	SSHORT att_current_timezone;
+
 	enum UtilType { UTIL_NONE, UTIL_GBAK, UTIL_GFIX, UTIL_GSTAT };
 
 	UtilType att_utility;

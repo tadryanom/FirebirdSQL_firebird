@@ -59,6 +59,9 @@ public:
 	static const ISC_DATE MIN_DATE = -678575;	// 01.01.0001
 	static const ISC_DATE MAX_DATE = 2973483;	// 31.12.9999
 
+	static const SINT64 SECONDS_PER_DAY = 24 * 60 * 60;
+	static const SINT64 ISC_TICKS_PER_DAY = SECONDS_PER_DAY * ISC_TIME_SECONDS_PRECISION;
+
 private:
 	static const ISC_DATE BAD_DATE = MAX_SLONG;
 	static const ISC_TIME BAD_TIME = MAX_ULONG;
@@ -163,6 +166,13 @@ public:
 	{
 		return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
 	}
+
+	// Time zone routines
+
+	static bool is_valid_tz_offset(int tzh, unsigned tzm) throw();
+
+	static ISC_TIME timeTzAtZone(const ISC_TIME_TZ& timeTz, ISC_SHORT zone) throw();
+	static ISC_TIMESTAMP timeStampTzAtZone(const ISC_TIMESTAMP_TZ& timeStampTz, ISC_SHORT zone) throw();
 
 private:
 	ISC_TIMESTAMP mValue;

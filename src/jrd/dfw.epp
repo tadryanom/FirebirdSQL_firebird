@@ -1232,10 +1232,14 @@ USHORT DFW_assign_index_type(thread_db* tdbb, const Firebird::MetaName& name, SS
 	{
 	case dtype_timestamp:
 		return idx_timestamp;
+	case dtype_timestamp_tz:
+		return idx_timestamp_tz;
 	case dtype_sql_date:
 		return idx_sql_date;
 	case dtype_sql_time:
 		return idx_sql_time;
+	case dtype_sql_time_tz:
+		return idx_sql_time_tz;
 	// idx_numeric2 used for 64-bit Integer support
 	case dtype_int64:
 		return idx_numeric2;

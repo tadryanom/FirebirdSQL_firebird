@@ -70,30 +70,39 @@ using namespace Firebird;
    */
 const BYTE CVT2_compare_priority[] =
 {
-	dtype_unknown,				// dtype_unknown through dtype_varying
-	dtype_text,					// have their natural values stored
-	dtype_cstring,				// in the table.
-	dtype_varying,
-	0, 0,						// dtypes and 4, 5 are unused.
-	dtype_packed,				// packed through long also have
-	dtype_byte,					// their natural values in the table
-	dtype_short,
-	dtype_long,
-	dtype_quad + 1,				// Move quad up by one to make room for int64 at its proper place in the table.
-	dtype_real + 4,				// Also leave space for dec_fixed, dec64 and dec128.
-	dtype_double + 4,
-	dtype_d_float + 4,
-	dtype_sql_date + 4,
-	dtype_sql_time + 4,
-	dtype_timestamp + 4,
-	dtype_blob + 4,
-	dtype_array + 4,
-	dtype_long + 1,				// int64 goes right after long
-	dtype_dbkey,				// compares with nothing except itself
-	dtype_boolean,				// compares with nothing except itself
-	dtype_quad + 3,				// dec64 and dec128 go after dec64 before real
-	dtype_quad + 4,
-	dtype_quad + 2				// dec_fixed goes after quad before dec64
+	// dtype_unknown through dtype_varying have their natural values stored in the table.
+	0,	// dtype_unknown
+	1,	// dtype_text
+	2,	// dtype_cstring
+	3,	// dtype_varying
+	// dtypes and 4, 5 are unused.
+	0, 0,
+	// packed through long also have their natural values in the table
+	6,	// dtype_packed
+	7,	// dtype_byte,
+	8,	// dtype_short
+	9,	// dtype_long
+	// Move quad up by one to make room for int64 at its proper place in the table.
+	11,	// dtype_quad
+	// Also leave space for dec_fixed, dec64 and dec 128.
+	15,	// dtype_real
+	16,	// dtype_double
+	17,	// dtype_d_float
+	18,	// dtype_sql_date
+	19,	// dtype_sql_time
+	// Leave space for dtype_sql_time_tz
+	21,	// dtype_timestamp
+	// Leave space for dtype_timestamp_tz
+	23,	// dtype_blob
+	24,	// dtype_array
+	10,	// dtype_int64 - goes right after long
+	25,	// dtype_dbkey - compares with nothing except itself
+	26,	// dtype_boolean - compares with nothing except itself
+	12,	// dtype_dec_fixed - go after quad
+	13,	// dec64 - go after dtype_dec_fixed
+	14,	// dec128 - go after dec64 and before real
+	20,	// dtype_sql_time_tz - go after dtype_sql_time
+	22	// dtype_timestamp_tz - go after dtype_timestamp
 };
 
 static inline int QUAD_COMPARE(const SQUAD* arg1, const SQUAD* arg2)
@@ -211,6 +220,9 @@ int CVT2_compare(const dsc* arg1, const dsc* arg2, Firebird::DecimalStatus decSt
 
 	// Handle the simple (matched) ones first
 
+	ISC_TIME time1, time2;
+	ISC_TIMESTAMP timestamp1, timestamp2;
+
 	if (arg1->dsc_dtype == arg2->dsc_dtype && arg1->dsc_scale == arg2->dsc_scale)
 	{
 		const UCHAR* p1 = arg1->dsc_address;
@@ -224,6 +236,13 @@ int CVT2_compare(const dsc* arg1, const dsc* arg2, Firebird::DecimalStatus decSt
 			if (*(SSHORT *) p1 > *(SSHORT *) p2)
 				return 1;
 			return -1;
+
+		case dtype_sql_time_tz:
+			time1 = TimeStamp::timeTzAtZone(*(ISC_TIME_TZ*) p1, 0);
+			p1 = (const UCHAR*) &time1;
+			time2 = TimeStamp::timeTzAtZone(*(ISC_TIME_TZ*) p2, 0);
+			p2 = (const UCHAR*) &time2;
+			// fall into
 
 		case dtype_sql_time:
 			if (*(ULONG *) p1 == *(ULONG *) p2)
@@ -261,6 +280,13 @@ int CVT2_compare(const dsc* arg1, const dsc* arg2, Firebird::DecimalStatus decSt
 				}
 				return (arg1->dsc_length > l) ? 1 : (arg2->dsc_length > l) ? -1 : 0;
 			}
+
+		case dtype_timestamp_tz:
+			timestamp1 = TimeStamp::timeStampTzAtZone(*(ISC_TIMESTAMP_TZ*) p1, 0);
+			p1 = (const UCHAR*) &timestamp1;
+			timestamp2 = TimeStamp::timeStampTzAtZone(*(ISC_TIMESTAMP_TZ*) p2, 0);
+			p2 = (const UCHAR*) &timestamp2;
+			// fall into
 
 		case dtype_timestamp:
 			if (((SLONG *) p1)[0] > ((SLONG *) p2)[0])
@@ -410,6 +436,18 @@ int CVT2_compare(const dsc* arg1, const dsc* arg2, Firebird::DecimalStatus decSt
 
 	switch (arg1->dsc_dtype)
 	{
+	case dtype_timestamp_tz:
+		{
+			DSC desc;
+			MOVE_CLEAR(&desc, sizeof(desc));
+			desc.dsc_dtype = dtype_timestamp_tz;
+			ISC_TIMESTAMP_TZ datetime;
+			desc.dsc_length = sizeof(datetime);
+			desc.dsc_address = (UCHAR*) &datetime;
+			CVT_move(arg2, &desc, 0);
+			return CVT2_compare(arg1, &desc, 0);
+		}
+
 	case dtype_timestamp:
 		{
 			DSC desc;
@@ -418,6 +456,18 @@ int CVT2_compare(const dsc* arg1, const dsc* arg2, Firebird::DecimalStatus decSt
 			SLONG datetime[2];
 			desc.dsc_length = sizeof(datetime);
 			desc.dsc_address = (UCHAR*) datetime;
+			CVT_move(arg2, &desc, 0);
+			return CVT2_compare(arg1, &desc, 0);
+		}
+
+	case dtype_sql_time_tz:
+		{
+			DSC desc;
+			MOVE_CLEAR(&desc, sizeof(desc));
+			desc.dsc_dtype = dtype_sql_time_tz;
+			ISC_TIME_TZ atime;
+			desc.dsc_length = sizeof(atime);
+			desc.dsc_address = (UCHAR*) &atime;
 			CVT_move(arg2, &desc, 0);
 			return CVT2_compare(arg1, &desc, 0);
 		}

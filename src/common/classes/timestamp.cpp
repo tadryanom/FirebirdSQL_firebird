@@ -57,4 +57,17 @@ TimeStamp TimeStamp::getCurrentTimeStamp()
 	return result;
 }
 
+//// FIXME: Windows and others ports.
+SSHORT TimeStamp::getCurrentTimeZone()
+{
+	time_t rawtime;
+	time(&rawtime);
+
+	struct tm tm1;
+	if (!localtime_r(&rawtime, &tm1))
+		report_error("localtime_r");
+
+	return tm1.tm_gmtoff / 60;
+}
+
 } // namespace

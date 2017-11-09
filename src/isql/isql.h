@@ -318,6 +318,8 @@ static const sqltypes Column_types[] = {
 	{DEC64_TYPE, "DECFLOAT(16)"},
 	{DEC128_TYPE, "DECFLOAT(34)"},
 	{DEC_FIXED_TYPE, "<Should not be shown>"},
+	{blr_sql_time_tz, "TIME WITH TIME ZONE"},		// keyword
+	{blr_timestamp_tz, "TIMESTAMP WITH TIME ZONE"},	// keyword
 	{0, ""}
 };
 
@@ -452,7 +454,9 @@ struct IsqlVar
 	union TypeMix
 	{
 		ISC_TIMESTAMP* asDateTime;
+		ISC_TIMESTAMP_TZ* asDateTimeTz;
 		ISC_TIME* asTime;
+		ISC_TIME_TZ* asTimeTz;
 		ISC_DATE* asDate;
 		SSHORT* asSmallint;
 		SLONG* asInteger;

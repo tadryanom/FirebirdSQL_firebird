@@ -354,6 +354,31 @@ GDS_TIME CVT_get_sql_time(const dsc* desc)
 }
 
 
+ISC_TIME_TZ CVT_get_sql_time_tz(const dsc* desc)
+{
+/**************************************
+ *
+ *      C V T _ g e t _ s q l _ t i m e _ t z
+ *
+ **************************************
+ *
+ * Functional description
+ *      Convert something arbitrary to a SQL time with time zone value
+ *
+ **************************************/
+	if (desc->dsc_dtype == dtype_sql_time_tz)
+		return *((ISC_TIME_TZ*) desc->dsc_address);
+
+	DSC temp_desc;
+	ISC_TIME_TZ value;
+	memset(&temp_desc, 0, sizeof(temp_desc));
+	temp_desc.dsc_dtype = dtype_sql_time_tz;
+	temp_desc.dsc_address = (UCHAR*) &value;
+	CVT_move(desc, &temp_desc, 0);
+	return value;
+}
+
+
 GDS_TIMESTAMP CVT_get_timestamp(const dsc* desc)
 {
 /**************************************
@@ -374,6 +399,31 @@ GDS_TIMESTAMP CVT_get_timestamp(const dsc* desc)
 	memset(&temp_desc, 0, sizeof(temp_desc));
 	temp_desc.dsc_dtype = dtype_timestamp;
 	temp_desc.dsc_address = (UCHAR *) &value;
+	CVT_move(desc, &temp_desc, 0);
+	return value;
+}
+
+
+ISC_TIMESTAMP_TZ CVT_get_timestamp_tz(const dsc* desc)
+{
+/**************************************
+ *
+ *      C V T _ g e t _ t i m e s t a m p _ t z
+ *
+ **************************************
+ *
+ * Functional description
+ *      Convert something arbitrary to a SQL timestamp with time zone
+ *
+ **************************************/
+	if (desc->dsc_dtype == dtype_timestamp_tz)
+		return *((ISC_TIMESTAMP_TZ*) desc->dsc_address);
+
+	DSC temp_desc;
+	ISC_TIMESTAMP_TZ value;
+	memset(&temp_desc, 0, sizeof(temp_desc));
+	temp_desc.dsc_dtype = dtype_timestamp_tz;
+	temp_desc.dsc_address = (UCHAR*) &value;
 	CVT_move(desc, &temp_desc, 0);
 	return value;
 }
@@ -467,6 +517,17 @@ SLONG EngineCallbacks::getCurDate()
 	}
 
 	return Firebird::TimeStamp::getCurrentTimeStamp().value().timestamp_date;
+}
+
+
+int EngineCallbacks::getSessionTimeZone()
+{
+	thread_db* tdbb = JRD_get_thread_data();
+
+	if (tdbb && (tdbb->getType() == ThreadData::tddDBB) && tdbb->getAttachment())
+		return tdbb->getAttachment()->att_current_timezone;
+
+	return 0;
 }
 
 

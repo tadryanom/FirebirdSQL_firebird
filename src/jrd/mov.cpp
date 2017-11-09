@@ -277,6 +277,23 @@ GDS_TIME MOV_get_sql_time(const dsc* desc)
 }
 
 
+ISC_TIME_TZ MOV_get_sql_time_tz(const dsc* desc)
+{
+/**************************************
+ *
+ *	M O V _ g e t _ s q l _ t i m e _ t z
+ *
+ **************************************
+ *
+ * Functional description
+ *	Convert something arbitrary to a SQL time with time zone
+ *
+ **************************************/
+
+	return CVT_get_sql_time_tz(desc);
+}
+
+
 GDS_TIMESTAMP MOV_get_timestamp(const dsc* desc)
 {
 /**************************************
@@ -291,6 +308,23 @@ GDS_TIMESTAMP MOV_get_timestamp(const dsc* desc)
  **************************************/
 
 	return CVT_get_timestamp(desc);
+}
+
+
+ISC_TIMESTAMP_TZ MOV_get_timestamp_tz(const dsc* desc)
+{
+/**************************************
+ *
+ *	M O V _ g e t _ t i m e s t a m p _ t z
+ *
+ **************************************
+ *
+ * Functional description
+ *	Convert something arbitrary to a timestamp with time zone
+ *
+ **************************************/
+
+	return CVT_get_timestamp_tz(desc);
 }
 
 
