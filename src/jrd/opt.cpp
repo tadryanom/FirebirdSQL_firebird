@@ -2556,6 +2556,9 @@ SortedStream* OPT_gen_sort(thread_db* tdbb, CompilerScratch* csb, const StreamLi
 				sort_key->skd_flags |= SKD_binary;
 		}
 
+		if (IS_INTL_DATA(desc) || desc->isDecFloat() || desc->isDateTimeTz())
+			sort_key->skd_flags |= SKD_separate_data;
+
 		map_item->clear();
 		map_item->node = node;
 		map_item->flagOffset = prev_key->getSkdOffset();

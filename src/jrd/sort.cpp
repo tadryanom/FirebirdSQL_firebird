@@ -814,8 +814,10 @@ void Sort::diddleKey(UCHAR* record, bool direction)
 				((Decimal64*) p)->makeKey(lwp);
 				*p ^= 1 << 7;
 			}
-			else
+			else if (!(key->skd_flags & SKD_separate_data))
 			{
+				fb_assert(false);
+
 				if (complement && n)
 				{
 					UCHAR* pp = p;
@@ -836,8 +838,10 @@ void Sort::diddleKey(UCHAR* record, bool direction)
 				((Decimal128*) p)->makeKey(lwp);
 				*p ^= 1 << 7;
 			}
-			else
+			else if (!(key->skd_flags & SKD_separate_data))
 			{
+				fb_assert(false);
+
 				if (complement && n)
 				{
 					UCHAR* pp = p;
@@ -998,17 +1002,21 @@ void Sort::diddleKey(UCHAR* record, bool direction)
 				}
 			}
 
-			longs = n >> SHIFTLONG;
-			while (--longs >= 0)
+			if (direction || !(key->skd_flags & SKD_separate_data))
 			{
-				c1 = p[3];
-				p[3] = *p;
-				*p++ = c1;
-				c1 = p[1];
-				p[1] = *p;
-				*p = c1;
-				p += 3;
+				longs = n >> SHIFTLONG;
+				while (--longs >= 0)
+				{
+					c1 = p[3];
+					p[3] = *p;
+					*p++ = c1;
+					c1 = p[1];
+					p[1] = *p;
+					*p = c1;
+					p += 3;
+				}
 			}
+
 			p = (UCHAR*) wp;
 			break;
 
@@ -1108,8 +1116,10 @@ void Sort::diddleKey(UCHAR* record, bool direction)
 				((Decimal64*) p)->makeKey(lwp);
 				p[3] ^= 1 << 7;
 			}
-			else
+			else if (!(key->skd_flags & SKD_separate_data))
 			{
+				fb_assert(false);
+
 				if (complement && n)
 				{
 					UCHAR* pp = p;
@@ -1129,8 +1139,10 @@ void Sort::diddleKey(UCHAR* record, bool direction)
 				((Decimal128*) p)->makeKey(lwp);
 				p[3] ^= 1 << 7;
 			}
-			else
+			else if (!(key->skd_flags & SKD_separate_data))
 			{
+				fb_assert(false);
+
 				if (complement && n)
 				{
 					UCHAR* pp = p;
@@ -1148,6 +1160,7 @@ void Sort::diddleKey(UCHAR* record, bool direction)
 			fb_assert(false);
 			break;
 		}
+
 		if (complement && n)
 		{
 			do {
