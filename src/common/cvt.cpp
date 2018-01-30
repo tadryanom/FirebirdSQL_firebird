@@ -651,6 +651,9 @@ void CVT_string_to_datetime(const dsc* desc,
 					// fetch the current datetime
 					*(ISC_TIMESTAMP*) date = Firebird::TimeStamp::getCurrentTimeStamp().value();
 
+					if (expect_type == expect_sql_time_tz || expect_type == expect_timestamp_tz)
+						((ISC_TIMESTAMP_TZ*) date)->timestamp_displacement = TimeStamp::getCurrentTimeZone();
+
 					if (strcmp(temp, NOW) == 0)
 						return;
 					if (expect_type == expect_sql_time || expect_type == expect_sql_time_tz)
