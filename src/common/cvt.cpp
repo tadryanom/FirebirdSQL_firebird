@@ -2238,8 +2238,7 @@ static void datetime_to_text(const dsc* from, dsc* to, Callbacks* cb)
 
 	// Decode the timestamp into human readable terms
 
-	//// FIXME: Put space before time zone.
-	TEXT temp[36];			// yyyy-mm-dd hh:mm:ss.tttt+th:tm OR dd-MMM-yyyy hh:mm:ss.tttt+th:tm
+	TEXT temp[36];			// yyyy-mm-dd hh:mm:ss.tttt +th:tm OR dd-MMM-yyyy hh:mm:ss.tttt +th:tm
 	TEXT* p = temp;
 
 	// Make a textual date for data types that include it
@@ -2290,6 +2289,7 @@ static void datetime_to_text(const dsc* from, dsc* to, Callbacks* cb)
 
 	if (from->dsc_dtype == dtype_sql_time_tz || from->dsc_dtype == dtype_timestamp_tz)
 	{
+		*p++ = ' ';
 		*p++ = timezone < 0 ? '-' : '+';
 		if (timezone < 0)
 			timezone = -timezone;

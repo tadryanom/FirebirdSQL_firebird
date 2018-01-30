@@ -68,8 +68,8 @@ static const USHORT _DSC_convert_to_text_length[DTYPE_TYPE_MAX] =
 	23,							// dtype_dec64		1 + 1 + 1 + 1 + 16(34) + 3(4)
 	42,							// dtype_dec128		+-  .   e   +-  coeff  + exp
 	36,							// dtype_dec_fixed	coeff(34) + 1(+-) + 1(.)
-	19,							// dtype_sql_time_tz   HH:MM:SS.MMMM+NN:NN
-	31							// dtype_timestamp_tz  YYYY-MM-DD HH:MM:SS.MMMM+NN:NN
+	20,							// dtype_sql_time_tz   HH:MM:SS.MMMM +NN:NN
+	31							// dtype_timestamp_tz  YYYY-MM-DD HH:MM:SS.MMMM +NN:NN
 };
 
 // Unimplemented names are in lowercase & <brackets>

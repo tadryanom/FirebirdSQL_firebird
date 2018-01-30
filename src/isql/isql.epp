@@ -155,9 +155,9 @@ const int FLOAT_LEN		= 14;	// -1.2345678E+38
 const int DOUBLE_LEN		= 23;	// -1.234567890123456E+300
 const int DATE_LEN		= 11;	// 11 for date only
 const int DATETIME_LEN		= 25;	// 25 for date-time
-const int DATETIME_TZ_LEN	= 30;	// 30 for date-time-tz
+const int DATETIME_TZ_LEN	= 31;	// 31 for date-time-tz
 const int TIME_ONLY_LEN		= 13;	// 13 for time only
-const int TIME_TZ_ONLY_LEN	= 19;	// 19 for time-tz only
+const int TIME_TZ_ONLY_LEN	= 20;	// 20 for time-tz only
 const int DATE_ONLY_LEN		= 11;
 const int BOOLEAN_LEN		= 7;	// <false>
 const int UNKNOWN_LEN		= 20;	// Unknown type: %d
@@ -7421,7 +7421,7 @@ static unsigned print_item(TEXT** s, const IsqlVar* var, const unsigned length)
 
 			if (dtype == SQL_TIMESTAMP_TZ)
 			{
-				sprintf(d + strlen(d), "%+03d:%02d", var->value.asDateTimeTz->timestamp_displacement / 60,
+				sprintf(d + strlen(d), " %+03d:%02d", var->value.asDateTimeTz->timestamp_displacement / 60,
 					abs((int) var->value.asDateTimeTz->timestamp_displacement) % 60);
 			}
 
@@ -7441,7 +7441,7 @@ static unsigned print_item(TEXT** s, const IsqlVar* var, const unsigned length)
 
 			if (dtype == SQL_TIME_TZ)
 			{
-				sprintf(d + strlen(d), "%+03d:%02d", var->value.asTimeTz->time_displacement / 60,
+				sprintf(d + strlen(d), " %+03d:%02d", var->value.asTimeTz->time_displacement / 60,
 					abs((int) var->value.asTimeTz->time_displacement) % 60);
 			}
 
