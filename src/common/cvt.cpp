@@ -479,7 +479,7 @@ static void integer_to_text(const dsc* from, dsc* to, Callbacks* cb)
 
 void CVT_string_to_datetime(const dsc* desc,
 							   ISC_TIMESTAMP_TZ* date, bool* timezone_present,
-							   const EXPECT_DATETIME expect_type, Callbacks* cb)
+							   const EXPECT_DATETIME expect_type, bool allow_special, Callbacks* cb)
 {
 /**************************************
  *
@@ -640,6 +640,9 @@ void CVT_string_to_datetime(const dsc* desc,
 					// it's not a month name, so it's either a magic word or
 					// a non-date string.  If there are more characters, it's bad
 
+					if (!allow_special)
+						CVT_conversion_error(desc, cb->err);
+
 					description[i] = SPECIAL;
 
 					while (++p < end)
@@ -656,24 +659,30 @@ void CVT_string_to_datetime(const dsc* desc,
 
 					if (strcmp(temp, NOW) == 0)
 						return;
+
 					if (expect_type == expect_sql_time || expect_type == expect_sql_time_tz)
 					{
 						CVT_conversion_error(desc, cb->err);
 						return;
 					}
+
 					date->timestamp_time = 0;
+
 					if (strcmp(temp, TODAY) == 0)
 						return;
+
 					if (strcmp(temp, TOMORROW) == 0)
 					{
 						date->timestamp_date++;
 						return;
 					}
+
 					if (strcmp(temp, YESTERDAY) == 0)
 					{
 						date->timestamp_date--;
 						return;
 					}
+
 					CVT_conversion_error(desc, cb->err);
 					return;
 				}
@@ -1513,7 +1522,7 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 		case dtype_text:
 			{
 				ISC_TIMESTAMP_TZ date;
-				CVT_string_to_datetime(from, &date, NULL, expect_timestamp, cb);
+				CVT_string_to_datetime(from, &date, NULL, expect_timestamp, true, cb);
 				*((GDS_TIMESTAMP*) to->dsc_address) = *(GDS_TIMESTAMP*) &date;
 			}
 			return;
@@ -1571,7 +1580,7 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 		case dtype_text:
 			{
 				ISC_TIMESTAMP_TZ date;
-				CVT_string_to_datetime(from, &date, NULL, expect_timestamp_tz, cb);
+				CVT_string_to_datetime(from, &date, NULL, expect_timestamp_tz, true, cb);
 				*((ISC_TIMESTAMP_TZ*) to->dsc_address) = date;
 			}
 			return;
@@ -1628,7 +1637,7 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 		case dtype_text:
 			{
 				ISC_TIMESTAMP_TZ date;
-				CVT_string_to_datetime(from, &date, NULL, expect_sql_date, cb);
+				CVT_string_to_datetime(from, &date, NULL, expect_sql_date, true, cb);
 				*((GDS_DATE *) to->dsc_address) = date.timestamp_date;
 			}
 			return;
@@ -1670,7 +1679,7 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 		case dtype_text:
 			{
 				ISC_TIMESTAMP_TZ date;
-				CVT_string_to_datetime(from, &date, NULL, expect_sql_time, cb);
+				CVT_string_to_datetime(from, &date, NULL, expect_sql_time, true, cb);
 				*((GDS_TIME *) to->dsc_address) = date.timestamp_time;
 			}
 			return;
@@ -1716,7 +1725,7 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 		case dtype_text:
 			{
 				ISC_TIMESTAMP_TZ date;
-				CVT_string_to_datetime(from, &date, NULL, expect_sql_time_tz, cb);
+				CVT_string_to_datetime(from, &date, NULL, expect_sql_time_tz, true, cb);
 				((ISC_TIME_TZ*) to->dsc_address)->time_time = date.timestamp_time;
 				((ISC_TIME_TZ*) to->dsc_address)->time_displacement = date.timestamp_displacement;
 			}

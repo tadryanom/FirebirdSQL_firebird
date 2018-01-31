@@ -180,7 +180,7 @@ ValueExprNode* MAKE_constant(const char* str, dsql_constant_type numeric_flag)
 
 			ISC_TIMESTAMP_TZ ts;
 			bool tz;
-			CVT_string_to_datetime(&tmp, &ts, &tz, expect, &EngineCallbacks::instance);
+			CVT_string_to_datetime(&tmp, &ts, &tz, expect, false, &EngineCallbacks::instance);
 
 			switch (numeric_flag)
 			{
