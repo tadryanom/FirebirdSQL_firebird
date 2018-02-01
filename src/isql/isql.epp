@@ -4902,7 +4902,7 @@ static processing_state frontend_set(const char* cmd, const char* const* parms,
 		{SetOptions::transaction, "TRANSACTION", 5},
 		{SetOptions::terminator, "TERMINATOR", 4},
 		{SetOptions::names, "NAMES", 0},
-		//// FIXME: {SetOptions::time, "TIME", 0},
+		{SetOptions::time, "TIME", 0},
 //#ifdef DEV_BUILD
 		{SetOptions::sqlda_display, "SQLDA_DISPLAY", 0},
 //#endif
@@ -5042,7 +5042,10 @@ static processing_state frontend_set(const char* cmd, const char* const* parms,
 		break;
 
 	case SetOptions::time:
-		ret = do_set_command(parms[2], &setValues.Time_display);
+		if (fb_utils::stricmp(parms[2], "ZONE") == 0)
+			ret = CONT;	// pass SET TIME ZONE command to server
+		else
+			ret = do_set_command(parms[2], &setValues.Time_display);
 		break;
 
 //#ifdef DEV_BUILD
