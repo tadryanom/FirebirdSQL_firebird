@@ -495,6 +495,7 @@ static const TOK tokens[] =
 	{TOK_WHILE, "WHILE", false},
 	{TOK_WINDOW, "WINDOW", false},
 	{TOK_WITH, "WITH", false},
+	{TOK_WITHOUT, "WITHOUT", false},
 	{TOK_WORK, "WORK", true},
 	{TOK_WRITE, "WRITE", true},
 	{TOK_YEAR, "YEAR", false},
