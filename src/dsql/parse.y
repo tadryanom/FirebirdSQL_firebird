@@ -634,6 +634,7 @@ using namespace Firebird;
 %token <metaNamePtr> UNBOUNDED
 %token <metaNamePtr> VARBINARY
 %token <metaNamePtr> WINDOW
+%token <metaNamePtr> WITHOUT
 %token <metaNamePtr> ZONE
 
 // precedence declarations for expression evaluation
