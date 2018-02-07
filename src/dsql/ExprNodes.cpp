@@ -3013,6 +3013,212 @@ ValueExprNode* ArrayNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 //--------------------
 
 
+static RegisterNode<AtNode> regAtNode(blr_at);
+
+AtNode::AtNode(MemoryPool& pool, ValueExprNode* aDateTimeArg, ValueExprNode* aZoneArg)
+	: TypedNode<ValueExprNode, ExprNode::TYPE_AT>(pool),
+	  dateTimeArg(aDateTimeArg),
+	  zoneArg(aZoneArg)
+{
+}
+
+DmlNode* AtNode::parse(thread_db* tdbb, MemoryPool& pool, CompilerScratch* csb, const UCHAR /*blrOp*/)
+{
+	AtNode* node = FB_NEW_POOL(pool) AtNode(pool);
+
+	node->dateTimeArg = PAR_parse_value(tdbb, csb);
+
+	switch (csb->csb_blr_reader.getByte())
+	{
+		default:
+			fb_assert(false);
+			// fall into
+
+		case blr_at_local:
+			node->zoneArg = NULL;
+			break;
+
+		case blr_at_zone:
+			node->zoneArg = PAR_parse_value(tdbb, csb);
+			break;
+	}
+
+	return node;
+}
+
+string AtNode::internalPrint(NodePrinter& printer) const
+{
+	ValueExprNode::internalPrint(printer);
+
+	NODE_PRINT(printer, dateTimeArg);
+	NODE_PRINT(printer, zoneArg);
+
+	return "AtNode";
+}
+
+ValueExprNode* AtNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
+{
+	AtNode* node = FB_NEW_POOL(dsqlScratch->getPool()) AtNode(dsqlScratch->getPool(),
+		doDsqlPass(dsqlScratch, dateTimeArg), doDsqlPass(dsqlScratch, zoneArg));
+	node->setParameterType(dsqlScratch, NULL, false);
+	return node;
+}
+
+void AtNode::setParameterName(dsql_par* parameter) const
+{
+	parameter->par_name = parameter->par_alias = "AT";
+}
+
+bool AtNode::setParameterType(DsqlCompilerScratch* dsqlScratch, const dsc* desc, bool forceVarChar)
+{
+	dsc zoneDesc;
+	zoneDesc.makeText(TimeZoneUtil::MAX_LEN, ttype_ascii);
+	zoneDesc.setNullable(true);
+
+	return PASS1_set_parameter_type(dsqlScratch, dateTimeArg, desc, forceVarChar) |
+		PASS1_set_parameter_type(dsqlScratch, zoneArg, &zoneDesc, forceVarChar);
+}
+
+void AtNode::genBlr(DsqlCompilerScratch* dsqlScratch)
+{
+	dsqlScratch->appendUChar(blr_at);
+
+	GEN_expr(dsqlScratch, dateTimeArg);
+
+	if (zoneArg)
+	{
+		dsqlScratch->appendUChar(blr_at_zone);
+		GEN_expr(dsqlScratch, zoneArg);
+	}
+	else
+		dsqlScratch->appendUChar(blr_at_local);
+}
+
+void AtNode::make(DsqlCompilerScratch* dsqlScratch, dsc* desc)
+{
+	dsc dateTimeDesc, zoneDesc;
+	MAKE_desc(dsqlScratch, &dateTimeDesc, dateTimeArg);
+
+	if (zoneArg)
+		MAKE_desc(dsqlScratch, &zoneDesc, zoneArg);
+	else
+	{
+		zoneDesc.clear();
+		zoneDesc.setNullable(false);
+	}
+
+	if (dateTimeDesc.isTime())
+		desc->makeTimeTz();
+	else if (dateTimeDesc.isTimeStamp())
+		desc->makeTimestampTz();
+	else
+		ERRD_post(Arg::Gds(isc_expression_eval_err));	//// TODO: more info
+
+	desc->setNullable(dateTimeDesc.isNullable() || (zoneArg && zoneDesc.isNullable()));
+}
+
+void AtNode::getDesc(thread_db* tdbb, CompilerScratch* csb, dsc* desc)
+{
+	dsc dateTimeDesc, zoneDesc;
+
+	dateTimeArg->getDesc(tdbb, csb, &dateTimeDesc);
+
+	if (zoneArg)
+		zoneArg->getDesc(tdbb, csb, &zoneDesc);
+
+	if (dateTimeDesc.isTime())
+		desc->makeTimeTz();
+	else if (dateTimeDesc.isTimeStamp())
+		desc->makeTimestampTz();
+
+	desc->setNullable(dateTimeDesc.isNullable() || (zoneArg && zoneDesc.isNullable()));
+}
+
+ValueExprNode* AtNode::copy(thread_db* tdbb, NodeCopier& copier) const
+{
+	AtNode* node = FB_NEW_POOL(*tdbb->getDefaultPool()) AtNode(*tdbb->getDefaultPool());
+	node->dateTimeArg = copier.copy(tdbb, dateTimeArg);
+	node->zoneArg = copier.copy(tdbb, zoneArg);
+	return node;
+}
+
+ValueExprNode* AtNode::pass2(thread_db* tdbb, CompilerScratch* csb)
+{
+	ValueExprNode::pass2(tdbb, csb);
+
+	dsc desc;
+	getDesc(tdbb, csb, &desc);
+	impureOffset = CMP_impure(csb, sizeof(impure_value));
+
+	return this;
+}
+
+dsc* AtNode::execute(thread_db* tdbb, jrd_req* request) const
+{
+	impure_value* const impure = request->getImpure<impure_value>(impureOffset);
+	request->req_flags &= ~req_null;
+
+	dsc* dateTimeDesc = EVL_expr(tdbb, request, dateTimeArg);
+
+	if (!dateTimeDesc || (request->req_flags & req_null))
+		return NULL;
+
+	dsc* zoneDesc = zoneArg ? EVL_expr(tdbb, request, zoneArg) : NULL;
+
+	if (zoneArg && (!zoneDesc || (request->req_flags & req_null)))
+		return NULL;
+
+	USHORT zone;
+
+	if (zoneArg)
+	{
+		MoveBuffer zoneBuffer;
+		UCHAR* zoneStr;
+		unsigned zoneLen = MOV_make_string2(tdbb, zoneDesc, CS_ASCII, &zoneStr, zoneBuffer);
+
+		zone = TimeZoneUtil::parse((char*) zoneStr, zoneLen);
+	}
+	else
+		zone = tdbb->getAttachment()->att_current_timezone;
+
+	if (dateTimeDesc->isTimeStamp())
+	{
+		ISC_TIMESTAMP_TZ timeStampTz;
+		dsc timeStampTzDesc;
+		timeStampTzDesc.makeTimestampTz(&timeStampTz);
+		MOV_move(tdbb, dateTimeDesc, &timeStampTzDesc);
+
+		ISC_TIMESTAMP timeStamp = TimeZoneUtil::timeStampTzAtZone(timeStampTz, zone);
+		timeStampTz.timestamp_date = timeStamp.timestamp_date;
+		timeStampTz.timestamp_time = timeStamp.timestamp_time;
+		timeStampTz.timestamp_zone = zone;
+
+		impure->vlu_desc.makeTimestampTz(&impure->vlu_misc.vlu_timestamp_tz);
+		MOV_move(tdbb, &timeStampTzDesc, &impure->vlu_desc);
+	}
+	else if (dateTimeDesc->isTime())
+	{
+		ISC_TIME_TZ timeTz;
+		dsc timeTzDesc;
+		timeTzDesc.makeTimeTz(&timeTz);
+		MOV_move(tdbb, dateTimeDesc, &timeTzDesc);
+
+		timeTz.time_time = TimeZoneUtil::timeTzAtZone(timeTz, zone);
+		timeTz.time_zone = zone;
+
+		impure->vlu_desc.makeTimeTz(&impure->vlu_misc.vlu_sql_time_tz);
+		MOV_move(tdbb, &timeTzDesc, &impure->vlu_desc);
+	}
+	else
+		ERR_post(Arg::Gds(isc_expression_eval_err));	//// TODO: more info
+
+	return &impure->vlu_desc;
+}
+
+
+//--------------------
+
+
 static RegisterNode<BoolAsValueNode> regBoolAsValueNode(blr_bool_as_value);
 
 BoolAsValueNode::BoolAsValueNode(MemoryPool& pool, BoolExprNode* aBoolean)

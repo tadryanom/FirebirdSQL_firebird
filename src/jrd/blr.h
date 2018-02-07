@@ -434,4 +434,10 @@
 #define blr_local_timestamp			(unsigned char) 214
 #define blr_local_time				(unsigned char) 215
 
+#define blr_at						(unsigned char) 216
+
+// subcodes of blr_at
+#define blr_at_local				(unsigned char) 0
+#define blr_at_zone					(unsigned char) 1
+
 #endif // JRD_BLR_H

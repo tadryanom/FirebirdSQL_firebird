@@ -275,6 +275,7 @@ static const UCHAR
 	byte_verb_verb[] = { op_byte, op_line, op_verb, op_verb, 0},
 	byte_literal[] = { op_byte, op_literal, op_line, 0},
 	byte_byte_verb[] = { op_byte, op_byte, op_line, op_verb, 0},
+	verb_byte_verb[] = { op_verb, op_byte, op_line, op_verb, 0},
 	parm[]		= { op_byte, op_word, op_line, 0},	// also field id
 
 	parm2[]		= { op_byte, op_word, op_word, op_line, 0},

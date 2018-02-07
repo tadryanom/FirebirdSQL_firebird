@@ -246,5 +246,6 @@ static const struct
 	{"store3", store3},
 	{"local_timestamp", byte_line},
 	{"local_time", byte_line},
+	{"at", verb_byte_verb},
 	{0, 0}
 };

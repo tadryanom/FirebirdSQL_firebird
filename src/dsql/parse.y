@@ -7116,7 +7116,14 @@ value_special
 %type <valueExprNode> value_primary
 value_primary
 	: nonparenthesized_value
-	| '(' value_primary ')'	{ $$ = $2; }
+	| '(' value_primary ')'					{ $$ = $2; }
+	| value_primary AT time_zone_specifier	{ $$ = newNode<AtNode>($1, $3); }
+	;
+
+%type <valueExprNode> time_zone_specifier
+time_zone_specifier
+	: LOCAL						{ $$ = NULL; }
+	| TIME ZONE value_primary	{ $$ = $3; }
 	;
 
 // Matches definition of <simple value specification> in SQL standard
