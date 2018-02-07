@@ -283,40 +283,4 @@ void NoThrowTimeStamp::decode(struct tm* times, int* fractions) const
 	decode_timestamp(mValue, times, fractions);
 }
 
-bool NoThrowTimeStamp::is_valid_tz_offset(int tzh, unsigned tzm) throw()
-{
-	tzh = tzh < 0 ? -tzh : tzh;
-
-	return tzm <= 59 && (tzh < 14 || (tzh == 14 && tzm == 0));
-}
-
-ISC_TIME NoThrowTimeStamp::timeTzAtZone(const ISC_TIME_TZ& timeTz, ISC_SHORT zone) throw()
-{
-	SLONG ticks = timeTz.time_time -
-		(timeTz.time_displacement - zone) * 60 * ISC_TIME_SECONDS_PRECISION;
-
-	// Make the result positive
-	while (ticks < 0)
-		ticks += ISC_TICKS_PER_DAY;
-
-	// And make it in the range of values for a day
-	ticks %= ISC_TICKS_PER_DAY;
-
-	fb_assert(ticks >= 0 && ticks < ISC_TICKS_PER_DAY);
-
-	return (ISC_TIME) ticks;
-}
-
-ISC_TIMESTAMP NoThrowTimeStamp::timeStampTzAtZone(const ISC_TIMESTAMP_TZ& timeStampTz, ISC_SHORT zone) throw()
-{
-	SINT64 ticks = timeStampTz.timestamp_date * ISC_TICKS_PER_DAY + timeStampTz.timestamp_time -
-		(timeStampTz.timestamp_displacement - zone) * 60 * ISC_TIME_SECONDS_PRECISION;
-
-	ISC_TIMESTAMP ts;
-	ts.timestamp_date = ticks / ISC_TICKS_PER_DAY;
-	ts.timestamp_time = ticks % ISC_TICKS_PER_DAY;
-
-	return ts;
-}
-
 } // namespace

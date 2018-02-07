@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include "memory_routines.h"
+#include "../common/TimeZoneUtil.h"
 #include "../common/classes/vector.h"
 #include "../common/classes/VaryStr.h"
 #include <stdio.h>
@@ -2602,7 +2603,7 @@ static void compress(thread_db* tdbb,
 	else if (itype == idx_sql_time_tz)
 	{
 		ISC_TIME_TZ timeTz = MOV_get_sql_time_tz(desc);
-		temp.temp_ulong = TimeStamp::timeTzAtZone(timeTz, 0);
+		temp.temp_ulong = TimeZoneUtil::timeTzAtZone(timeTz, TimeZoneUtil::UTC_ZONE);
 		temp_copy_length = sizeof(ULONG);
 		temp_is_negative = false;
 
@@ -2626,7 +2627,7 @@ static void compress(thread_db* tdbb,
 	else if (desc->dsc_dtype == dtype_timestamp_tz)
 	{
 		ISC_TIMESTAMP_TZ timestampTz = MOV_get_timestamp_tz(desc);
-		ISC_TIMESTAMP timestamp = TimeStamp::timeStampTzAtZone(timestampTz, 0);
+		ISC_TIMESTAMP timestamp = TimeZoneUtil::timeStampTzAtZone(timestampTz, TimeZoneUtil::UTC_ZONE);
 
 		dsc descTimestamp;
 		descTimestamp.makeTimestamp(&timestamp);

@@ -167,13 +167,6 @@ public:
 		return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
 	}
 
-	// Time zone routines
-
-	static bool is_valid_tz_offset(int tzh, unsigned tzm) throw();
-
-	static ISC_TIME timeTzAtZone(const ISC_TIME_TZ& timeTz, ISC_SHORT zone) throw();
-	static ISC_TIMESTAMP timeStampTzAtZone(const ISC_TIMESTAMP_TZ& timeStampTz, ISC_SHORT zone) throw();
-
 private:
 	ISC_TIMESTAMP mValue;
 

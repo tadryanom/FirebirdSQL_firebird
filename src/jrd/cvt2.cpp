@@ -32,6 +32,7 @@
 #include "../jrd/val.h"
 #include "gen/iberror.h"
 #include "../jrd/intl.h"
+#include "../common/TimeZoneUtil.h"
 #include "../common/gdsassert.h"
 #include "../jrd/cvt_proto.h"
 #include "../jrd/cvt2_proto.h"
@@ -238,9 +239,9 @@ int CVT2_compare(const dsc* arg1, const dsc* arg2, Firebird::DecimalStatus decSt
 			return -1;
 
 		case dtype_sql_time_tz:
-			time1 = TimeStamp::timeTzAtZone(*(ISC_TIME_TZ*) p1, 0);
+			time1 = TimeZoneUtil::timeTzAtZone(*(ISC_TIME_TZ*) p1, TimeZoneUtil::UTC_ZONE);
 			p1 = (const UCHAR*) &time1;
-			time2 = TimeStamp::timeTzAtZone(*(ISC_TIME_TZ*) p2, 0);
+			time2 = TimeZoneUtil::timeTzAtZone(*(ISC_TIME_TZ*) p2, TimeZoneUtil::UTC_ZONE);
 			p2 = (const UCHAR*) &time2;
 			// fall into
 
@@ -282,9 +283,9 @@ int CVT2_compare(const dsc* arg1, const dsc* arg2, Firebird::DecimalStatus decSt
 			}
 
 		case dtype_timestamp_tz:
-			timestamp1 = TimeStamp::timeStampTzAtZone(*(ISC_TIMESTAMP_TZ*) p1, 0);
+			timestamp1 = TimeZoneUtil::timeStampTzAtZone(*(ISC_TIMESTAMP_TZ*) p1, TimeZoneUtil::UTC_ZONE);
 			p1 = (const UCHAR*) &timestamp1;
-			timestamp2 = TimeStamp::timeStampTzAtZone(*(ISC_TIMESTAMP_TZ*) p2, 0);
+			timestamp2 = TimeZoneUtil::timeStampTzAtZone(*(ISC_TIMESTAMP_TZ*) p2, TimeZoneUtil::UTC_ZONE);
 			p2 = (const UCHAR*) &timestamp2;
 			// fall into
 

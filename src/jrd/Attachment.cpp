@@ -45,6 +45,7 @@
 #include "../common/classes/fb_string.h"
 #include "../common/classes/MetaName.h"
 #include "../common/StatusArg.h"
+#include "../common/TimeZoneUtil.h"
 #include "../common/isc_proto.h"
 #include "../common/classes/RefMutex.h"
 
@@ -199,7 +200,7 @@ Jrd::Attachment::Attachment(MemoryPool* pool, Database* dbb)
 	  att_ext_connection(NULL),
 	  att_ext_call_depth(0),
 	  att_trace_manager(FB_NEW_POOL(*att_pool) TraceManager(this)),
-	  att_original_timezone(TimeStamp::getCurrentTimeZone()),
+	  att_original_timezone(TimeZoneUtil::getCurrent()),
 	  att_current_timezone(att_original_timezone),
 	  att_utility(UTIL_NONE),
 	  att_procedures(*pool),

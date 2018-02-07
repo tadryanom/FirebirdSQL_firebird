@@ -21,6 +21,7 @@
 #include "firebird.h"
 #include <math.h>
 #include <ctype.h>
+#include "../common/TimeZoneUtil.h"
 #include "../common/classes/FpeControl.h"
 #include "../common/classes/VaryStr.h"
 #include "../dsql/ExprNodes.h"
@@ -2635,24 +2636,24 @@ dsc* ArithmeticNode::addSqlTime(const dsc* desc, impure_value* value) const
 	bool op2_is_tz = desc->isDateTimeTz();
 
 	// Coerce operand1 to a count of seconds
-	SSHORT tz1 = 0;
+	USHORT tz1 = TimeZoneUtil::UTC_ZONE;
 	SINT64 d1;
 
 	if (op1_is_time)
 	{
 		if (op1_is_tz)
-			tz1 = ((ISC_TIME_TZ*) value->vlu_desc.dsc_address)->time_displacement;
+			tz1 = ((ISC_TIME_TZ*) value->vlu_desc.dsc_address)->time_zone;
 
 		if (blrOp == blr_subtract && op2_is_time && (op1_is_tz != op2_is_tz || (op1_is_tz && op2_is_tz)))
 		{
 			if (op1_is_tz)
-				d1 = TimeStamp::timeTzAtZone(*(ISC_TIME_TZ*) value->vlu_desc.dsc_address, 0);
+				d1 = TimeZoneUtil::timeTzAtZone(*(ISC_TIME_TZ*) value->vlu_desc.dsc_address, TimeZoneUtil::UTC_ZONE);
 			else
 			{
 				ISC_TIME_TZ localTimeTz;
 				localTimeTz.time_time = *(ISC_TIME*) value->vlu_desc.dsc_address;
-				localTimeTz.time_displacement = attachment->att_current_timezone;
-				d1 = TimeStamp::timeTzAtZone(localTimeTz, 0);
+				localTimeTz.time_zone = attachment->att_current_timezone;
+				d1 = TimeZoneUtil::timeTzAtZone(localTimeTz, TimeZoneUtil::UTC_ZONE);
 			}
 		}
 		else
@@ -2664,24 +2665,24 @@ dsc* ArithmeticNode::addSqlTime(const dsc* desc, impure_value* value) const
 		d1 = MOV_get_int64(tdbb, &value->vlu_desc, ISC_TIME_SECONDS_PRECISION_SCALE);
 
 	// Coerce operand2 to a count of seconds
-	SSHORT tz2 = 0;
+	USHORT tz2 = TimeZoneUtil::UTC_ZONE;
 	SINT64 d2;
 
 	if (op2_is_time)
 	{
 		if (op2_is_tz)
-			tz2 = ((ISC_TIME_TZ*) desc->dsc_address)->time_displacement;
+			tz2 = ((ISC_TIME_TZ*) desc->dsc_address)->time_zone;
 
 		if (blrOp == blr_subtract && op1_is_time && (op1_is_tz != op2_is_tz || (op1_is_tz && op2_is_tz)))
 		{
 			if (op2_is_tz)
-				d2 = TimeStamp::timeTzAtZone(*(ISC_TIME_TZ*) desc->dsc_address, 0);
+				d2 = TimeZoneUtil::timeTzAtZone(*(ISC_TIME_TZ*) desc->dsc_address, TimeZoneUtil::UTC_ZONE);
 			else
 			{
 				ISC_TIME_TZ localTimeTz;
 				localTimeTz.time_time = *(ISC_TIME*) desc->dsc_address;
-				localTimeTz.time_displacement = attachment->att_current_timezone;
-				d2 = TimeStamp::timeTzAtZone(localTimeTz, 0);
+				localTimeTz.time_zone = attachment->att_current_timezone;
+				d2 = TimeZoneUtil::timeTzAtZone(localTimeTz, TimeZoneUtil::UTC_ZONE);
 			}
 		}
 		else
@@ -2740,9 +2741,9 @@ dsc* ArithmeticNode::addSqlTime(const dsc* desc, impure_value* value) const
 	fb_assert(!(op1_is_tz && op2_is_tz));
 
 	if (op1_is_tz)
-		((ISC_TIME_TZ*) result->dsc_address)->time_displacement = tz1;
+		((ISC_TIME_TZ*) result->dsc_address)->time_zone = tz1;
 	else if (op2_is_tz)
-		((ISC_TIME_TZ*) result->dsc_address)->time_displacement = tz2;
+		((ISC_TIME_TZ*) result->dsc_address)->time_zone = tz2;
 
 	return result;
 }
@@ -2759,20 +2760,20 @@ dsc* ArithmeticNode::addTimeStamp(const dsc* desc, impure_value* value) const
 
 	bool op1_is_tz = value->vlu_desc.isDateTimeTz();
 	bool op2_is_tz = desc->isDateTimeTz();
-	SSHORT tz1 = 0;
-	SSHORT tz2 = 0;
+	USHORT tz1 = TimeZoneUtil::UTC_ZONE;
+	USHORT tz2 = TimeZoneUtil::UTC_ZONE;
 
 	if (op1_is_tz)
 	{
 		tz1 = value->vlu_desc.isTime() ?
-			((ISC_TIME_TZ*) value->vlu_desc.dsc_address)->time_displacement :
-			((ISC_TIMESTAMP_TZ*) value->vlu_desc.dsc_address)->timestamp_displacement;
+			((ISC_TIME_TZ*) value->vlu_desc.dsc_address)->time_zone :
+			((ISC_TIMESTAMP_TZ*) value->vlu_desc.dsc_address)->timestamp_zone;
 	}
 	else if (op2_is_tz)
 	{
 		tz2 = desc->isTime() ?
-			((ISC_TIME_TZ*) desc->dsc_address)->time_displacement :
-			((ISC_TIMESTAMP_TZ*) desc->dsc_address)->timestamp_displacement;
+			((ISC_TIME_TZ*) desc->dsc_address)->time_zone :
+			((ISC_TIMESTAMP_TZ*) desc->dsc_address)->timestamp_zone;
 	}
 
 	SINT64 d1, d2;
@@ -2965,9 +2966,9 @@ dsc* ArithmeticNode::addTimeStamp(const dsc* desc, impure_value* value) const
 	result->dsc_address = (UCHAR*) &value->vlu_misc.vlu_timestamp_tz;
 
 	if (op1_is_tz)
-		((ISC_TIMESTAMP_TZ*) result->dsc_address)->timestamp_displacement = tz1;
+		((ISC_TIMESTAMP_TZ*) result->dsc_address)->timestamp_zone = tz1;
 	else if (op2_is_tz)
-		((ISC_TIMESTAMP_TZ*) result->dsc_address)->timestamp_displacement = tz2;
+		((ISC_TIMESTAMP_TZ*) result->dsc_address)->timestamp_zone = tz2;
 
 	return result;
 }
@@ -4037,7 +4038,7 @@ dsc* CurrentTimeNode::execute(thread_db* /*tdbb*/, jrd_req* request) const
 	impure->vlu_desc.dsc_length = type_lengths[dtype_sql_time_tz];
 
 	((ISC_TIME_TZ*) impure->vlu_desc.dsc_address)->time_time = encTimes.timestamp_time;
-	((ISC_TIME_TZ*) impure->vlu_desc.dsc_address)->time_displacement = TimeStamp::getCurrentTimeZone();
+	((ISC_TIME_TZ*) impure->vlu_desc.dsc_address)->time_zone = TimeZoneUtil::getCurrent();
 
 	return &impure->vlu_desc;
 }
@@ -4153,7 +4154,7 @@ dsc* CurrentTimeStampNode::execute(thread_db* /*tdbb*/, jrd_req* request) const
 
 	((ISC_TIMESTAMP_TZ*) impure->vlu_desc.dsc_address)->timestamp_date = encTimes.timestamp_date;
 	((ISC_TIMESTAMP_TZ*) impure->vlu_desc.dsc_address)->timestamp_time = encTimes.timestamp_time;
-	((ISC_TIMESTAMP_TZ*) impure->vlu_desc.dsc_address)->timestamp_displacement = TimeStamp::getCurrentTimeZone();
+	((ISC_TIMESTAMP_TZ*) impure->vlu_desc.dsc_address)->timestamp_zone = TimeZoneUtil::getCurrent();
 
 	return &impure->vlu_desc;
 }
@@ -5202,11 +5203,12 @@ dsc* ExtractNode::execute(thread_db* tdbb, jrd_req* request) const
 
 	tm times = {0};
 	int fractions;
-	SSHORT tzDisplacement;
+	ISC_TIMESTAMP_TZ timeStampTz;
 
 	switch (value->dsc_dtype)
 	{
 		case dtype_sql_time:
+		case dtype_sql_time_tz:
 			switch (blrSubOp)
 			{
 				case blr_extract_hour:
@@ -5216,6 +5218,17 @@ dsc* ExtractNode::execute(thread_db* tdbb, jrd_req* request) const
 					TimeStamp::decode_time(*(GDS_TIME*) value->dsc_address,
 						&times.tm_hour, &times.tm_min, &times.tm_sec, &fractions);
 					break;
+
+				case blr_extract_timezone_hour:
+				case blr_extract_timezone_minute:
+					if (value->dsc_dtype == dtype_sql_time_tz)
+					{
+						timeStampTz.timestamp_date = TimeStamp::getCurrentTimeStamp().value().timestamp_date;	//// FIXME: ???
+						timeStampTz.timestamp_time = ((ISC_TIME_TZ*) value->dsc_address)->time_time;
+						timeStampTz.timestamp_zone = ((ISC_TIME_TZ*) value->dsc_address)->time_zone;
+						break;
+					}
+					// else fall into
 
 				default:
 					ERR_post(Arg::Gds(isc_expression_eval_err) <<
@@ -5230,6 +5243,8 @@ dsc* ExtractNode::execute(thread_db* tdbb, jrd_req* request) const
 				case blr_extract_minute:
 				case blr_extract_second:
 				case blr_extract_millisecond:
+				case blr_extract_timezone_hour:
+				case blr_extract_timezone_minute:
 					ERR_post(Arg::Gds(isc_expression_eval_err) <<
 							 Arg::Gds(isc_invalid_extractpart_date));
 					break;
@@ -5240,15 +5255,27 @@ dsc* ExtractNode::execute(thread_db* tdbb, jrd_req* request) const
 			break;
 
 		case dtype_timestamp:
-			TimeStamp::decode_timestamp(*(GDS_TIMESTAMP*) value->dsc_address, &times, &fractions);
-			break;
+			switch (blrSubOp)
+			{
+				case blr_extract_timezone_hour:
+				case blr_extract_timezone_minute:
+					ERR_post(Arg::Gds(isc_expression_eval_err) <<
+							 Arg::Gds(isc_invalid_extractpart_date));
+					break;
 
-		case dtype_sql_time_tz:
-			tzDisplacement = ((ISC_TIME_TZ*) value->dsc_address)->time_displacement;
+				default:
+					TimeStamp::decode_timestamp(*(GDS_TIMESTAMP*) value->dsc_address, &times, &fractions);
+			}
 			break;
 
 		case dtype_timestamp_tz:
-			tzDisplacement = ((ISC_TIMESTAMP_TZ*) value->dsc_address)->timestamp_displacement;
+			switch (blrSubOp)
+			{
+				case blr_extract_timezone_hour:
+				case blr_extract_timezone_minute:
+					timeStampTz = *(ISC_TIMESTAMP_TZ*) value->dsc_address;
+					break;
+			}
 			break;
 
 		default:
@@ -5257,15 +5284,22 @@ dsc* ExtractNode::execute(thread_db* tdbb, jrd_req* request) const
 			break;
 	}
 
-	switch (blrSubOp)
+	if (blrSubOp == blr_extract_timezone_hour || blrSubOp == blr_extract_timezone_minute)
 	{
-		case blr_extract_timezone_hour:
-			*(SSHORT*) impure->vlu_desc.dsc_address = tzDisplacement / 60;
-			return &impure->vlu_desc;
+		int tzSign;
+		unsigned tzh, tzm;
+		TimeZoneUtil::extractOffset(timeStampTz, &tzSign, &tzh, &tzm);
 
-		case blr_extract_timezone_minute:
-			*(SSHORT*) impure->vlu_desc.dsc_address = tzDisplacement % 60;
-			return &impure->vlu_desc;
+		switch (blrSubOp)
+		{
+			case blr_extract_timezone_hour:
+				*(SSHORT*) impure->vlu_desc.dsc_address = tzSign * int(tzh);
+				return &impure->vlu_desc;
+
+			case blr_extract_timezone_minute:
+				*(SSHORT*) impure->vlu_desc.dsc_address = tzSign * int(tzm);
+				return &impure->vlu_desc;
+		}
 	}
 
 	USHORT part;
@@ -13162,9 +13196,19 @@ static SINT64 getTimeStampToIscTicks(const dsc* d, bool utc)
 
 	CVT_move(d, &result, tdbb->getAttachment()->att_dec_status);
 
+	SINT64 delta = 0;
+
+	if (utc)
+	{
+		int tzSign;
+		unsigned tzh, tzm;
+		TimeZoneUtil::extractOffset(result_timestamp, &tzSign, &tzh, &tzm);
+
+		delta = tzSign * int(tzh * 60 + tzm) * 60 * ISC_TIME_SECONDS_PRECISION;
+	}
+
 	return ((SINT64) result_timestamp.timestamp_date) * ISC_TICKS_PER_DAY +
-		(SINT64) result_timestamp.timestamp_time -
-		(utc ? result_timestamp.timestamp_displacement * 60 * ISC_TIME_SECONDS_PRECISION : 0);
+		(SINT64) result_timestamp.timestamp_time - delta;
 }
 
 // One of d1, d2 is time, the other is date

@@ -42,6 +42,7 @@
 #include "gen/iberror.h"
 #include "../jrd/intl.h"
 #include "../common/gdsassert.h"
+#include "../common/TimeZoneUtil.h"
 #include "../jrd/cvt_proto.h"
 #include "../common/dsc_proto.h"
 #include "../jrd/err_proto.h"
@@ -520,14 +521,14 @@ SLONG EngineCallbacks::getCurDate()
 }
 
 
-int EngineCallbacks::getSessionTimeZone()
+USHORT EngineCallbacks::getSessionTimeZone()
 {
 	thread_db* tdbb = JRD_get_thread_data();
 
 	if (tdbb && (tdbb->getType() == ThreadData::tddDBB) && tdbb->getAttachment())
 		return tdbb->getAttachment()->att_current_timezone;
 
-	return 0;
+	return TimeZoneUtil::UTC_ZONE;
 }
 
 

@@ -35,6 +35,7 @@
 #include "../jrd/sort.h"
 #include "gen/iberror.h"
 #include "../jrd/intl.h"
+#include "../common/TimeZoneUtil.h"
 #include "../common/gdsassert.h"
 #include "../jrd/req.h"
 #include "../jrd/rse.h"
@@ -935,8 +936,8 @@ void Sort::diddleKey(UCHAR* record, bool direction)
 		case SKD_sql_time_tz:
 			if (direction)
 			{
-				*(ISC_TIME*) p = TimeStamp::timeTzAtZone(*(ISC_TIME_TZ*) p, 0);
-				((ISC_TIME_TZ*) p)->time_displacement = 0;
+				*(ISC_TIME*) p = TimeZoneUtil::timeTzAtZone(*(ISC_TIME_TZ*) p, TimeZoneUtil::UTC_ZONE);
+				((ISC_TIME_TZ*) p)->time_zone = TimeZoneUtil::UTC_ZONE;
 			}
 			p[3] ^= 1 << 7;
 			break;
@@ -944,8 +945,8 @@ void Sort::diddleKey(UCHAR* record, bool direction)
 		case SKD_timestamp_tz:
 			if (direction)
 			{
-				*(ISC_TIMESTAMP*) p = TimeStamp::timeStampTzAtZone(*(ISC_TIMESTAMP_TZ*) p, 0);
-				((ISC_TIMESTAMP_TZ*) p)->timestamp_displacement = 0;
+				*(ISC_TIMESTAMP*) p = TimeZoneUtil::timeStampTzAtZone(*(ISC_TIMESTAMP_TZ*) p, TimeZoneUtil::UTC_ZONE);
+				((ISC_TIMESTAMP_TZ*) p)->timestamp_zone = TimeZoneUtil::UTC_ZONE;
 			}
 			p[3] ^= 1 << 7;
 			break;

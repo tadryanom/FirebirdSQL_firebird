@@ -65,6 +65,7 @@
 #include "../common/os/path_utils.h"
 #include "../common/StatusHolder.h"
 #include "../common/Tokens.h"
+#include "../common/TimeZoneUtil.h"
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
@@ -123,6 +124,7 @@ enum literal_string_type
 
 using Firebird::PathName;
 using Firebird::TempFile;
+using Firebird::TimeZoneUtil;
 using MsgFormat::SafeArg;
 
 #include "../isql/ColList.h"
@@ -7424,8 +7426,8 @@ static unsigned print_item(TEXT** s, const IsqlVar* var, const unsigned length)
 
 			if (dtype == SQL_TIMESTAMP_TZ)
 			{
-				sprintf(d + strlen(d), " %+03d:%02d", var->value.asDateTimeTz->timestamp_displacement / 60,
-					abs((int) var->value.asDateTimeTz->timestamp_displacement) % 60);
+				strcat(d + strlen(d), " ");
+				TimeZoneUtil::format(d + strlen(d), var->value.asDateTimeTz->timestamp_zone);
 			}
 
 			sprintf(p, "%-*.*s ", length, length, d);
@@ -7444,8 +7446,8 @@ static unsigned print_item(TEXT** s, const IsqlVar* var, const unsigned length)
 
 			if (dtype == SQL_TIME_TZ)
 			{
-				sprintf(d + strlen(d), " %+03d:%02d", var->value.asTimeTz->time_displacement / 60,
-					abs((int) var->value.asTimeTz->time_displacement) % 60);
+				strcat(d + strlen(d), " ");
+				TimeZoneUtil::format(d + strlen(d), var->value.asTimeTz->time_zone);
 			}
 
 			sprintf(p, "%-*.*s ", length, length, d);

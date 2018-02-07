@@ -63,9 +63,6 @@ public:
 	// Return current timestamp value
 	static TimeStamp getCurrentTimeStamp();
 
-	// Return current time zone
-	static SSHORT getCurrentTimeZone();
-
 	// Assign current date/time to the timestamp
 	void validate()
 	{

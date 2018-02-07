@@ -130,6 +130,7 @@ namespace
 			{
 				const dsc& desc = format->fmt_desc[i];
 
+#if 0	//// FIXME:
 				switch (desc.dsc_dtype)
 				{
 					case dtype_sql_time_tz:
@@ -157,6 +158,7 @@ namespace
 						break;
 					}
 				}
+#endif
 			}
 		}
 

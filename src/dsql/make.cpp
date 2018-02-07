@@ -213,7 +213,7 @@ ValueExprNode* MAKE_constant(const char* str, dsql_constant_type numeric_flag)
 					if (tz)
 					{
 						((ISC_TIME_TZ*) literal->litDesc.dsc_address)->time_time = ts.timestamp_time;
-						((ISC_TIME_TZ*) literal->litDesc.dsc_address)->time_displacement = ts.timestamp_displacement;
+						((ISC_TIME_TZ*) literal->litDesc.dsc_address)->time_zone = ts.timestamp_zone;
 					}
 					else
 						*(ISC_TIME*) literal->litDesc.dsc_address = ts.timestamp_time;
@@ -224,8 +224,7 @@ ValueExprNode* MAKE_constant(const char* str, dsql_constant_type numeric_flag)
 					{
 						((ISC_TIMESTAMP_TZ*) literal->litDesc.dsc_address)->timestamp_date = ts.timestamp_date;
 						((ISC_TIMESTAMP_TZ*) literal->litDesc.dsc_address)->timestamp_time = ts.timestamp_time;
-						((ISC_TIMESTAMP_TZ*) literal->litDesc.dsc_address)->timestamp_displacement =
-							ts.timestamp_displacement;
+						((ISC_TIMESTAMP_TZ*) literal->litDesc.dsc_address)->timestamp_zone = ts.timestamp_zone;
 					}
 					else
 					{
