@@ -548,8 +548,7 @@ void CVT_string_to_datetime(const dsc* desc,
 	unsigned int position_month = 1;
 	unsigned int position_day = 2;
 	bool have_english_month = false;
-	bool dot_separator_seen = false;
-	bool parse_tz = false;
+	char date_sep = '\0';
 	VaryStr<100> buffer;			// arbitrarily large
 
 	const char* p = NULL;
@@ -708,26 +707,50 @@ void CVT_string_to_datetime(const dsc* desc,
 			break;
 
 		// Grab a separator character
-		if (*p == '/' || *p == ',' || *p == ':' || (*p == '-' && i <= 2))
+		if (i <= 1)
 		{
-			p++;
+			if (date_sep == '\0' || *p == date_sep)
+			{
+				date_sep = *p;
+
+				if (*p == '/' || *p == '-')
+				{
+					p++;
+					continue;
+				}
+				else if (*p == '.')
+				{
+					p++;
+					continue;
+				}
+			}
+		}
+		else if (i == 2)
 			continue;
-		}
-
-		//// FIXME: +/- should not be obrigatory.
-		if (i >= 3 && i <= 6 && (*p == '+' || *p == '-'))
+		else if (i >= 3 && i <= 5)
 		{
-			parse_tz = true;
+			if (*p == ':')
+			{
+				p++;
+				continue;
+			}
+			else if (*p == '.')
+			{
+				p++;
+				i = 6 - 1;
+				continue;
+			}
+			else
+			{
+				i = 7;
+				break;
+			}
+		}
+		else if (i == 6)
 			break;
-		}
 
-		if (*p == '.')
-		{
-			if (i <= 1)
-				dot_separator_seen = true;
-			p++;
-			//continue;
-		}
+		CVT_conversion_error(desc, cb->err);
+		return;
 	}
 
 	// User must provide at least 2 components
@@ -746,12 +769,18 @@ void CVT_string_to_datetime(const dsc* desc,
 
 	USHORT zone = cb->getSessionTimeZone();
 
-	if (parse_tz && expect_type != expect_sql_date)
+	if (expect_type != expect_sql_date)
 	{
-		zone = TimeZoneUtil::parse(p, strlen(p));
+		while (p < end && (*p == ' ' || *p == '\t'))
+			p++;
 
-		if (timezone_present)
-			*timezone_present = true;
+		if (p < end)
+		{
+			zone = TimeZoneUtil::parse(p, strlen(p));
+
+			if (timezone_present)
+				*timezone_present = true;
+		}
 	}
 	else
 	{
@@ -795,7 +824,7 @@ void CVT_string_to_datetime(const dsc* desc,
 			position_month = 1;
 			position_day = 0;
 		}
-		else if (dot_separator_seen)
+		else if (date_sep == '.')
 		{
 			// A period as a separator implies DD.MM.YYYY
 			position_year = 2;
