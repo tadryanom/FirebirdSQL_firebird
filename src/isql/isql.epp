@@ -7426,8 +7426,9 @@ static unsigned print_item(TEXT** s, const IsqlVar* var, const unsigned length)
 
 			if (dtype == SQL_TIMESTAMP_TZ)
 			{
-				strcat(d + strlen(d), " ");
-				TimeZoneUtil::format(d + strlen(d), var->value.asDateTimeTz->timestamp_zone);
+				size_t len = strlen(d);
+				strcat(d + len, " ");
+				TimeZoneUtil::format(d + len + 1, sizeof(d) - (len + 1), var->value.asDateTimeTz->timestamp_zone);
 			}
 
 			sprintf(p, "%-*.*s ", length, length, d);
@@ -7446,8 +7447,9 @@ static unsigned print_item(TEXT** s, const IsqlVar* var, const unsigned length)
 
 			if (dtype == SQL_TIME_TZ)
 			{
-				strcat(d + strlen(d), " ");
-				TimeZoneUtil::format(d + strlen(d), var->value.asTimeTz->time_zone);
+				size_t len = strlen(d);
+				strcat(d + len, " ");
+				TimeZoneUtil::format(d + len + 1, sizeof(d) - (len + 1), var->value.asTimeTz->time_zone);
 			}
 
 			sprintf(p, "%-*.*s ", length, length, d);

@@ -34,21 +34,22 @@ namespace Firebird {
 class TimeZoneUtil
 {
 public:
-	static const USHORT UTC_ZONE = 0;
+	static const unsigned ONE_DAY = 24 * 60;	// used for offset encoding
+	static const USHORT UTC_ZONE = ONE_DAY + 0;
 	static const unsigned MAX_LEN = 6;
 
 public:
 	static USHORT getCurrent();
 
 	static USHORT parse(const char* str, unsigned strLen);
-	static unsigned format(char* buffer, USHORT zone);
+	static unsigned format(char* buffer, size_t bufferSize, USHORT timeZone);
 
-	static bool isValidOffset(int sign, int tzh, unsigned tzm);
+	static bool isValidOffset(int sign, unsigned tzh, unsigned tzm);
 
 	static void extractOffset(const ISC_TIMESTAMP_TZ& timeStampTz, int* sign, unsigned* tzh, unsigned* tzm);
 
-	static ISC_TIME timeTzAtZone(const ISC_TIME_TZ& timeTz, USHORT zone);
-	static ISC_TIMESTAMP timeStampTzAtZone(const ISC_TIMESTAMP_TZ& timeStampTz, USHORT zone);
+	static ISC_TIME timeTzAtZone(const ISC_TIME_TZ& timeTz, USHORT atTimeZone);
+	static ISC_TIMESTAMP timeStampTzAtZone(const ISC_TIMESTAMP_TZ& timeStampTz, USHORT atTimeZone);
 };
 
 }	// namespace Firebird

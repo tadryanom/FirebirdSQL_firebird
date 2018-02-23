@@ -2298,7 +2298,7 @@ static void datetime_to_text(const dsc* from, dsc* to, Callbacks* cb)
 	if (from->dsc_dtype == dtype_sql_time_tz || from->dsc_dtype == dtype_timestamp_tz)
 	{
 		*p++ = ' ';
-		p += TimeZoneUtil::format(p, timezone);
+		p += TimeZoneUtil::format(p, sizeof(temp) - (p - temp), timezone);
 	}
 
 	// Move the text version of the date/time value into the destination
