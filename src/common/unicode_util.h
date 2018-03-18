@@ -32,6 +32,7 @@
 #include "../common/os/mod_loader.h"
 #include "../common/classes/fb_string.h"
 #include <unicode/ucnv.h>
+#include <unicode/ucal.h>
 
 struct UCollator;
 struct USet;
@@ -119,6 +120,18 @@ public:
                 UErrorCode *err);
 		int8_t (U_EXPORT2* ucnv_getMaxCharSize) (const UConverter *converter);
 		int8_t (U_EXPORT2* ucnv_getMinCharSize) (const UConverter *converter);
+
+		int32_t (U_EXPORT2* ustrcmp) (const UChar* s1, const UChar* s2);
+
+		UCalendar* (U_EXPORT2* ucalOpen) (const UChar* zoneID, int32_t len, const char* locale, UCalendarType type,
+			UErrorCode* err);
+		void (U_EXPORT2* ucalClose) (UCalendar* cal);
+		void (U_EXPORT2* ucalSetMillis) (UCalendar* cal, UDate dateTime, UErrorCode* err);
+		int32_t (U_EXPORT2* ucalGet) (UCalendar* cal, UCalendarDateFields field, UErrorCode* err);
+		void (U_EXPORT2* ucalSetDateTime) (UCalendar* cal, int32_t year, int32_t month, int32_t date, int32_t hour,
+			int32_t minute, int32_t second, UErrorCode* err);
+		int32_t (U_EXPORT2* ucalGetTimeZoneID) (const UCalendar* cal, UChar* result, int32_t resultLength,
+			UErrorCode *status);
 
 		int vMajor, vMinor;
 	};

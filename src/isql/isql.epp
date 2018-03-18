@@ -157,9 +157,9 @@ const int FLOAT_LEN		= 14;	// -1.2345678E+38
 const int DOUBLE_LEN		= 23;	// -1.234567890123456E+300
 const int DATE_LEN		= 11;	// 11 for date only
 const int DATETIME_LEN		= 25;	// 25 for date-time
-const int DATETIME_TZ_LEN	= 31;	// 31 for date-time-tz
+const int DATETIME_TZ_LEN	= DATETIME_LEN - 1 + 1 + TimeZoneUtil::MAX_LEN;	// DATETIME_LEN should be 24
 const int TIME_ONLY_LEN		= 13;	// 13 for time only
-const int TIME_TZ_ONLY_LEN	= 20;	// 20 for time-tz only
+const int TIME_TZ_ONLY_LEN	= TIME_ONLY_LEN + 1 + TimeZoneUtil::MAX_LEN;
 const int DATE_ONLY_LEN		= 11;
 const int BOOLEAN_LEN		= 7;	// <false>
 const int UNKNOWN_LEN		= 20;	// Unknown type: %d
@@ -7064,7 +7064,7 @@ static unsigned print_item(TEXT** s, const IsqlVar* var, const unsigned length)
  *
  **************************************/
 	const char* convErr = "Conversion error";
- 	TEXT d[32];
+	TEXT d[64];
 	TEXT* p = *s;
 	*p = '\0';
 
@@ -7401,7 +7401,17 @@ static unsigned print_item(TEXT** s, const IsqlVar* var, const unsigned length)
 
 		case SQL_TIMESTAMP:
 		case SQL_TIMESTAMP_TZ:
-			isc_decode_timestamp(var->value.asDateTime, &times);
+		{
+			char timeZone[TimeZoneUtil::MAX_SIZE];
+			ULONG fractions;
+
+			if (dtype == SQL_TIMESTAMP_TZ)
+				isc_decode_timestamp_tz(var->value.asDateTimeTz, &times, &fractions, timeZone, sizeof(timeZone));
+			else
+			{
+				isc_decode_timestamp(var->value.asDateTime, &times);
+				fractions = ((ULONG*) var->value.asChar)[1] % ISC_TIME_SECONDS_PRECISION;
+			}
 
 			if (isqlGlob.SQL_dialect > SQL_DIALECT_V5)
 			{
@@ -7409,7 +7419,7 @@ static unsigned print_item(TEXT** s, const IsqlVar* var, const unsigned length)
 						times.tm_year + 1900, (times.tm_mon + 1),
 						times.tm_mday, times.tm_hour, times.tm_min,
 						times.tm_sec,
-						((ULONG*) var->value.asChar)[1] % ISC_TIME_SECONDS_PRECISION);
+						fractions);
 			}
 			else
 			{
@@ -7418,7 +7428,7 @@ static unsigned print_item(TEXT** s, const IsqlVar* var, const unsigned length)
 							times.tm_mday, alpha_months[times.tm_mon],
 							times.tm_year + 1900, times.tm_hour, times.tm_min,
 							times.tm_sec,
-							((ULONG*) var->value.asChar)[1] % ISC_TIME_SECONDS_PRECISION);
+							fractions);
 				else
 					sprintf(d, "%2d-%s-%4d", times.tm_mday,
 							alpha_months[times.tm_mon], times.tm_year + 1900);
@@ -7428,7 +7438,7 @@ static unsigned print_item(TEXT** s, const IsqlVar* var, const unsigned length)
 			{
 				size_t len = strlen(d);
 				strcat(d + len, " ");
-				TimeZoneUtil::format(d + len + 1, sizeof(d) - (len + 1), var->value.asDateTimeTz->timestamp_zone);
+				strcat(d + len + 1, timeZone);
 			}
 
 			sprintf(p, "%-*.*s ", length, length, d);
@@ -7437,19 +7447,31 @@ static unsigned print_item(TEXT** s, const IsqlVar* var, const unsigned length)
 				isqlGlob.printf("%s%s", d, NEWLINE);
 
 			break;
+		}
 
 		case SQL_TYPE_TIME:
 		case SQL_TIME_TZ:
-			isc_decode_sql_time(var->value.asTime, &times);
+		{
+			char timeZone[TimeZoneUtil::MAX_SIZE];
+			ULONG fractions;
+
+			if (dtype == SQL_TIME_TZ)
+				isc_decode_sql_time_tz(var->value.asTimeTz, &times, &fractions, timeZone, sizeof(timeZone));
+			else
+			{
+				isc_decode_sql_time(var->value.asTime, &times);
+				fractions = (*var->value.asTime) % ISC_TIME_SECONDS_PRECISION;
+			}
+
 			sprintf(d, "%2.2d:%2.2d:%2.2d.%4.4" ULONGFORMAT,
 					times.tm_hour, times.tm_min, times.tm_sec,
-					(*var->value.asTime) % ISC_TIME_SECONDS_PRECISION);
+					fractions);
 
 			if (dtype == SQL_TIME_TZ)
 			{
 				size_t len = strlen(d);
 				strcat(d + len, " ");
-				TimeZoneUtil::format(d + len + 1, sizeof(d) - (len + 1), var->value.asTimeTz->time_zone);
+				strcat(d + len + 1, timeZone);
 			}
 
 			sprintf(p, "%-*.*s ", length, length, d);
@@ -7458,6 +7480,7 @@ static unsigned print_item(TEXT** s, const IsqlVar* var, const unsigned length)
 				isqlGlob.printf("%s%s", d, NEWLINE);
 
 			break;
+		}
 
 		case SQL_TYPE_DATE:
 			isc_decode_sql_date(var->value.asDate, &times);

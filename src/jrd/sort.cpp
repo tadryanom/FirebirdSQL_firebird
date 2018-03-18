@@ -933,26 +933,10 @@ void Sort::diddleKey(UCHAR* record, bool direction)
 
 		switch (key->skd_dtype)
 		{
-		case SKD_sql_time_tz:
-			if (direction)
-			{
-				*(ISC_TIME*) p = TimeZoneUtil::timeTzAtZone(*(ISC_TIME_TZ*) p, TimeZoneUtil::UTC_ZONE);
-				((ISC_TIME_TZ*) p)->time_zone = TimeZoneUtil::UTC_ZONE;
-			}
-			p[3] ^= 1 << 7;
-			break;
-
-		case SKD_timestamp_tz:
-			if (direction)
-			{
-				*(ISC_TIMESTAMP*) p = TimeZoneUtil::timeStampTzAtZone(*(ISC_TIMESTAMP_TZ*) p, TimeZoneUtil::UTC_ZONE);
-				((ISC_TIMESTAMP_TZ*) p)->timestamp_zone = TimeZoneUtil::UTC_ZONE;
-			}
-			p[3] ^= 1 << 7;
-			break;
-
 		case SKD_timestamp:
+		case SKD_timestamp_tz:
 		case SKD_sql_time:
+		case SKD_sql_time_tz:
 		case SKD_sql_date:
 			p[3] ^= 1 << 7;
 			break;

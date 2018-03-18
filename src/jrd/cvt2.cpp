@@ -221,9 +221,6 @@ int CVT2_compare(const dsc* arg1, const dsc* arg2, Firebird::DecimalStatus decSt
 
 	// Handle the simple (matched) ones first
 
-	ISC_TIME time1, time2;
-	ISC_TIMESTAMP timestamp1, timestamp2;
-
 	if (arg1->dsc_dtype == arg2->dsc_dtype && arg1->dsc_scale == arg2->dsc_scale)
 	{
 		const UCHAR* p1 = arg1->dsc_address;
@@ -239,12 +236,6 @@ int CVT2_compare(const dsc* arg1, const dsc* arg2, Firebird::DecimalStatus decSt
 			return -1;
 
 		case dtype_sql_time_tz:
-			time1 = TimeZoneUtil::timeTzAtZone(*(ISC_TIME_TZ*) p1, TimeZoneUtil::UTC_ZONE);
-			p1 = (const UCHAR*) &time1;
-			time2 = TimeZoneUtil::timeTzAtZone(*(ISC_TIME_TZ*) p2, TimeZoneUtil::UTC_ZONE);
-			p2 = (const UCHAR*) &time2;
-			// fall into
-
 		case dtype_sql_time:
 			if (*(ULONG *) p1 == *(ULONG *) p2)
 				return 0;
@@ -283,12 +274,6 @@ int CVT2_compare(const dsc* arg1, const dsc* arg2, Firebird::DecimalStatus decSt
 			}
 
 		case dtype_timestamp_tz:
-			timestamp1 = TimeZoneUtil::timeStampTzAtZone(*(ISC_TIMESTAMP_TZ*) p1, TimeZoneUtil::UTC_ZONE);
-			p1 = (const UCHAR*) &timestamp1;
-			timestamp2 = TimeZoneUtil::timeStampTzAtZone(*(ISC_TIMESTAMP_TZ*) p2, TimeZoneUtil::UTC_ZONE);
-			p2 = (const UCHAR*) &timestamp2;
-			// fall into
-
 		case dtype_timestamp:
 			if (((SLONG *) p1)[0] > ((SLONG *) p2)[0])
 				return 1;

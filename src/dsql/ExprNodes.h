@@ -93,17 +93,19 @@ public:
 	virtual dsc* execute(thread_db* tdbb, jrd_req* request) const;
 
 	// add and add2 are used in somewhat obscure way in aggregation.
-	static dsc* add(const dsc* desc, impure_value* value, const ValueExprNode* node, const UCHAR blrOp);
-	static dsc* add2(const dsc* desc, impure_value* value, const ValueExprNode* node, const UCHAR blrOp);
+	static dsc* add(thread_db* tdbb, const dsc* desc, impure_value* value, const ValueExprNode* node,
+		const UCHAR blrOp);
+	static dsc* add2(thread_db* tdbb, const dsc* desc, impure_value* value, const ValueExprNode* node,
+		const UCHAR blrOp);
 
 private:
 	dsc* multiply(const dsc* desc, impure_value* value) const;
 	dsc* multiply2(const dsc* desc, impure_value* value) const;
 	dsc* divide2(const dsc* desc, impure_value* value) const;
-	dsc* addDateTime(const dsc* desc, impure_value* value) const;
+	dsc* addDateTime(thread_db* tdbb, const dsc* desc, impure_value* value) const;
 	dsc* addSqlDate(const dsc* desc, impure_value* value) const;
-	dsc* addSqlTime(const dsc* desc, impure_value* value) const;
-	dsc* addTimeStamp(const dsc* desc, impure_value* value) const;
+	dsc* addSqlTime(thread_db* tdbb, const dsc* desc, impure_value* value) const;
+	dsc* addTimeStamp(thread_db* tdbb, const dsc* desc, impure_value* value) const;
 
 private:
 	void makeDialect1(dsc* desc, dsc& desc1, dsc& desc2);

@@ -29,6 +29,7 @@
  */
 
 #include "firebird.h"
+#include "../common/TimeZoneUtil.h"
 #include "../common/classes/VaryStr.h"
 #include "../common/classes/Hash.h"
 #include "../jrd/SysFunction.h"
@@ -504,7 +505,7 @@ void setParamsDateAdd(DataTypeUtilBase*, const SysFunction*, int argsCount, dsc*
 	}
 
 	if (argsCount >= 3 && args[2]->isUnknown())
-		args[2]->makeTimestamp();
+		args[2]->makeTimestamp();	//// TODO:
 }
 
 
@@ -530,7 +531,7 @@ void setParamsFirstLastDay(DataTypeUtilBase*, const SysFunction*, int argsCount,
 	if (argsCount >= 2)
 	{
 		if (args[1]->isUnknown())
-			args[1]->makeTimestamp();
+			args[1]->makeTimestamp();	//// TODO:
 	}
 }
 
@@ -963,8 +964,13 @@ void makeFirstLastDayResult(DataTypeUtilBase*, const SysFunction*, dsc* result,
 
 	result->makeDate();
 
-	if (argsCount >= 2 && args[1]->dsc_dtype == dtype_timestamp)
-		result->makeTimestamp();
+	if (argsCount >= 2)
+	{
+		if (args[1]->dsc_dtype == dtype_timestamp)
+			result->makeTimestamp();
+		else if (args[1]->dsc_dtype == dtype_timestamp_tz)
+			result->makeTimestampTz();
+	}
 
 	result->setNullable(isNullable);
 }
@@ -1908,6 +1914,7 @@ dsc* evlDateAdd(thread_db* tdbb, const SysFunction* function, const NestValueArr
 	switch (valueDsc->dsc_dtype)
 	{
 		case dtype_sql_time:
+		case dtype_sql_time_tz:
 			timestamp.value().timestamp_time = *(GDS_TIME*) valueDsc->dsc_address;
 			timestamp.value().timestamp_date =
 				(TimeStamp::MAX_DATE - TimeStamp::MIN_DATE) / 2 + TimeStamp::MIN_DATE;
@@ -1938,6 +1945,7 @@ dsc* evlDateAdd(thread_db* tdbb, const SysFunction* function, const NestValueArr
 			break;
 
 		case dtype_timestamp:
+		case dtype_timestamp_tz:
 			timestamp.value() = *(GDS_TIMESTAMP*) valueDsc->dsc_address;
 			break;
 
@@ -2067,6 +2075,7 @@ dsc* evlDateAdd(thread_db* tdbb, const SysFunction* function, const NestValueArr
 	switch (impure->vlu_desc.dsc_dtype)
 	{
 		case dtype_sql_time:
+		case dtype_sql_time_tz:
 			impure->vlu_misc.vlu_sql_time = timestamp.value().timestamp_time;
 			break;
 
@@ -2075,6 +2084,7 @@ dsc* evlDateAdd(thread_db* tdbb, const SysFunction* function, const NestValueArr
 			break;
 
 		case dtype_timestamp:
+		case dtype_timestamp_tz:
 			impure->vlu_misc.vlu_timestamp = timestamp.value();
 			break;
 
@@ -2088,6 +2098,7 @@ dsc* evlDateAdd(thread_db* tdbb, const SysFunction* function, const NestValueArr
 }
 
 
+//// FIXME:
 dsc* evlDateDiff(thread_db* tdbb, const SysFunction* function, const NestValueArray& args,
 	impure_value* impure)
 {
@@ -2370,6 +2381,10 @@ dsc* evlFirstLastDay(thread_db* tdbb, const SysFunction* function, const NestVal
 			timestamp.decode(&times, &fractions);
 			break;
 
+		case dtype_timestamp_tz:
+			TimeZoneUtil::decodeTimeStamp(*(ISC_TIMESTAMP_TZ*) valueDsc->dsc_address, &times, &fractions);
+			break;
+
 		default:
 			status_exception::raise(
 				Arg::Gds(isc_expression_eval_err) <<
@@ -2447,6 +2462,14 @@ dsc* evlFirstLastDay(thread_db* tdbb, const SysFunction* function, const NestVal
 
 		case dtype_timestamp:
 			impure->vlu_misc.vlu_timestamp = timestamp.value();
+			break;
+
+		case dtype_timestamp_tz:
+			impure->vlu_misc.vlu_timestamp_tz.timestamp_date = timestamp.value().timestamp_date;
+			impure->vlu_misc.vlu_timestamp_tz.timestamp_time = timestamp.value().timestamp_time;
+			impure->vlu_misc.vlu_timestamp_tz.timestamp_zone =
+				((ISC_TIMESTAMP_TZ*) valueDsc->dsc_address)->timestamp_zone;
+			TimeZoneUtil::localTimeStampToUtc(impure->vlu_misc.vlu_timestamp_tz);
 			break;
 	}
 

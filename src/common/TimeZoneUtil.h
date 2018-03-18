@@ -36,10 +36,12 @@ class TimeZoneUtil
 public:
 	static const unsigned ONE_DAY = 24 * 60;	// used for offset encoding
 	static const USHORT UTC_ZONE = ONE_DAY + 0;
-	static const unsigned MAX_LEN = 6;
+
+	static const unsigned MAX_LEN = 25;	//// FIXME:
+	static const unsigned MAX_SIZE = MAX_LEN + 1;
 
 public:
-	static USHORT getCurrent();
+	static USHORT getSystemTimeZone();
 
 	static USHORT parse(const char* str, unsigned strLen);
 	static unsigned format(char* buffer, size_t bufferSize, USHORT timeZone);
@@ -48,8 +50,14 @@ public:
 
 	static void extractOffset(const ISC_TIMESTAMP_TZ& timeStampTz, int* sign, unsigned* tzh, unsigned* tzm);
 
-	static ISC_TIME timeTzAtZone(const ISC_TIME_TZ& timeTz, USHORT atTimeZone);
-	static ISC_TIMESTAMP timeStampTzAtZone(const ISC_TIMESTAMP_TZ& timeStampTz, USHORT atTimeZone);
+	static ISC_TIME timeTzToTime(const ISC_TIME_TZ& timeTz, USHORT toTimeZone);
+	static ISC_TIMESTAMP timeStampTzToTimeStamp(const ISC_TIMESTAMP_TZ& timeStampTz, USHORT toTimeZone);
+
+	static void localTimeToUtc(ISC_TIME_TZ& timeTz);
+	static void localTimeStampToUtc(ISC_TIMESTAMP_TZ& timeStampTz);
+
+	static void decodeTime(const ISC_TIME_TZ& timeTz, struct tm* times, int* fractions = NULL);
+	static void decodeTimeStamp(const ISC_TIMESTAMP_TZ& timeStampTz, struct tm* times, int* fractions = NULL);
 };
 
 }	// namespace Firebird

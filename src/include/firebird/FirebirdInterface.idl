@@ -1056,6 +1056,7 @@ interface Util : Versioned
 	void decodeTime(ISC_TIME time, uint* hours, uint* minutes, uint* seconds, uint* fractions);
 	ISC_DATE encodeDate(uint year, uint month, uint day);
 	ISC_TIME encodeTime(uint hours, uint minutes, uint seconds, uint fractions);
+	//// TODO: TZ functions
 	uint formatStatus(string buffer, uint bufferSize, Status status);
 	uint getClientVersion();	// Returns major * 256 + minor
 	XpbBuilder getXpbBuilder(Status status, uint kind, const uchar* buf, uint len);

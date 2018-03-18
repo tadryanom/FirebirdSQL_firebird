@@ -47,6 +47,7 @@
 #include "../yvalve/gds_proto.h"
 #include "../common/os/path_utils.h"
 #include "../common/dsc.h"
+#include "../common/TimeZoneUtil.h"
 #include "../jrd/constants.h"
 #include "../jrd/status.h"
 #include "../common/os/os_utils.h"
@@ -133,6 +134,7 @@ const SLONG GENERIC_SQLCODE		= -999;
 #include "../common/classes/MsgPrint.h"
 
 using Firebird::TimeStamp;
+using Firebird::TimeZoneUtil;
 using Firebird::BlrReader;
 
 // This structure is used to parse the firebird.msg file.
@@ -481,6 +483,40 @@ void API_ROUTINE isc_decode_sql_time(const GDS_TIME* sql_time, void* times_arg)
 }
 
 
+//// TODO: isc_encode_sql_time_tz
+void API_ROUTINE isc_decode_sql_time_tz(const ISC_TIME_TZ* timeTz, void* timesArg, ULONG* fractions,
+	char* buffer, unsigned short bufferSize)
+{
+/**************************************
+ *
+ *	i s c _ d e c o d e _ s q l _ t i m e _ t z
+ *
+ **************************************
+ *
+ * Functional description
+ *	Convert from internal TIME-tz format to UNIX time structure.
+ *
+ **************************************/
+	tm* const times = static_cast<struct tm*>(timesArg);
+
+	try
+	{
+		int intFractions;
+		TimeZoneUtil::decodeTime(*timeTz, times, &intFractions);
+
+		if (fractions)
+			*fractions = (ULONG) intFractions;
+
+		if (buffer)
+			TimeZoneUtil::format(buffer, bufferSize, timeTz->time_zone);
+	}
+	catch (const Firebird::Exception&)
+	{
+		//// FIXME:
+	}
+}
+
+
 void API_ROUTINE isc_decode_timestamp(const GDS_TIMESTAMP* date, void* times_arg)
 {
 /**************************************
@@ -498,6 +534,43 @@ void API_ROUTINE isc_decode_timestamp(const GDS_TIMESTAMP* date, void* times_arg
  **************************************/
 	tm* const times = static_cast<struct tm*>(times_arg);
 	Firebird::TimeStamp::decode_timestamp(*date, times);
+}
+
+
+//// TODO: isc_encode_timestamp_tz
+void API_ROUTINE isc_decode_timestamp_tz(const ISC_TIMESTAMP_TZ* timeStampTz, void* timesArg, ULONG* fractions,
+	char* buffer, unsigned short bufferSize)
+{
+/**************************************
+ *
+ *	i s c _ d e c o d e _ t i m e s t a m p _ t z
+ *
+ **************************************
+ *
+ * Functional description
+ *	Convert from internal timestamp-tz format to UNIX time structure.
+ *
+ *	Note: This routine is intended only for public API use. Engine itself and
+ *  utilities should be using TimeStamp class directly in type-safe manner.
+ *
+ **************************************/
+	tm* const times = static_cast<struct tm*>(timesArg);
+
+	try
+	{
+		int intFractions;
+		TimeZoneUtil::decodeTimeStamp(*timeStampTz, times, &intFractions);
+
+		if (fractions)
+			*fractions = (ULONG) intFractions;
+
+		if (buffer)
+			TimeZoneUtil::format(buffer, bufferSize, timeStampTz->timestamp_zone);
+	}
+	catch (const Firebird::Exception&)
+	{
+		//// FIXME:
+	}
 }
 
 

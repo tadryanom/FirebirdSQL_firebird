@@ -653,10 +653,14 @@ void CVT_string_to_datetime(const dsc* desc,
 					*(ISC_TIMESTAMP*) date = Firebird::TimeStamp::getCurrentTimeStamp().value();
 
 					if (expect_type == expect_sql_time_tz || expect_type == expect_timestamp_tz)
-						((ISC_TIMESTAMP_TZ*) date)->timestamp_zone = TimeZoneUtil::getCurrent();
+						date->timestamp_zone = cb->getSessionTimeZone();
 
 					if (strcmp(temp, NOW) == 0)
+					{
+						if (expect_type == expect_sql_time_tz || expect_type == expect_timestamp_tz)
+							TimeZoneUtil::localTimeStampToUtc(*date);
 						return;
+					}
 
 					if (expect_type == expect_sql_time || expect_type == expect_sql_time_tz)
 					{
@@ -665,6 +669,9 @@ void CVT_string_to_datetime(const dsc* desc,
 					}
 
 					date->timestamp_time = 0;
+
+					if (expect_type == expect_sql_time_tz || expect_type == expect_timestamp_tz)
+						TimeZoneUtil::localTimeStampToUtc(*date);
 
 					if (strcmp(temp, TODAY) == 0)
 						return;
@@ -767,7 +774,8 @@ void CVT_string_to_datetime(const dsc* desc,
 		return;
 	}
 
-	USHORT zone = cb->getSessionTimeZone();
+	USHORT sessionTimeZone = cb->getSessionTimeZone();
+	USHORT zone = sessionTimeZone;
 
 	if (expect_type != expect_sql_date)
 	{
@@ -879,12 +887,13 @@ void CVT_string_to_datetime(const dsc* desc,
 	}
 	else
 	{
-		// The date portion isn't needed for time - but to
-		// keep the conversion in/out of isc_time clean lets
-		// initialize it properly anyway
-		times.tm_year = 0;
-		times.tm_mon = 0;
-		times.tm_mday = 1;
+		// Fetch current date
+		tm times2;
+		Firebird::TimeStamp::getCurrentTimeStamp().decode(&times2);
+
+		times.tm_year = times2.tm_year;
+		times.tm_mon = times2.tm_mon;
+		times.tm_mday = times2.tm_mday;
 	}
 
 	// Handle time values out of range - note possibility of 60 for
@@ -952,15 +961,21 @@ void CVT_string_to_datetime(const dsc* desc,
 	date->timestamp_time += components[6];
 	date->timestamp_zone = zone;
 
-	if (expect_type == expect_sql_time)
+	if (expect_type == expect_sql_time_tz || expect_type == expect_timestamp_tz || zone != sessionTimeZone)
+		TimeZoneUtil::localTimeStampToUtc(*date);
+
+	if (zone != sessionTimeZone)
 	{
-		ISC_TIME_TZ timeTz;
-		timeTz.time_time = date->timestamp_time;
-		timeTz.time_zone = zone;
-		date->timestamp_time = TimeZoneUtil::timeTzAtZone(timeTz, cb->getSessionTimeZone());
+		if (expect_type == expect_sql_time)
+		{
+			ISC_TIME_TZ timeTz;
+			timeTz.time_time = date->timestamp_time;
+			timeTz.time_zone = zone;
+			date->timestamp_time = TimeZoneUtil::timeTzToTime(timeTz, sessionTimeZone);
+		}
+		else if (expect_type == expect_timestamp)
+			*(ISC_TIMESTAMP*) date = TimeZoneUtil::timeStampTzToTimeStamp(*date, sessionTimeZone);
 	}
-	else if (expect_type == expect_timestamp)
-		*(ISC_TIMESTAMP*) date = TimeZoneUtil::timeStampTzAtZone(*date, cb->getSessionTimeZone());
 }
 
 
@@ -1543,13 +1558,13 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 			tsTz.timestamp_time = ((ISC_TIME_TZ*) from->dsc_address)->time_time;
 			tsTz.timestamp_zone = ((ISC_TIME_TZ*) from->dsc_address)->time_zone;
 			*(ISC_TIMESTAMP*) to->dsc_address =
-				TimeZoneUtil::timeStampTzAtZone(tsTz, cb->getSessionTimeZone());
+				TimeZoneUtil::timeStampTzToTimeStamp(tsTz, cb->getSessionTimeZone());
 			return;
 		}
 
 		case dtype_timestamp_tz:
 			*(ISC_TIMESTAMP*) to->dsc_address =
-				TimeZoneUtil::timeStampTzAtZone(*(ISC_TIMESTAMP_TZ*) from->dsc_address, cb->getSessionTimeZone());
+				TimeZoneUtil::timeStampTzToTimeStamp(*(ISC_TIMESTAMP_TZ*) from->dsc_address, cb->getSessionTimeZone());
 			return;
 
 		default:
@@ -1588,10 +1603,12 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 			((ISC_TIMESTAMP_TZ*) to->dsc_address)->timestamp_date = cb->getCurDate();
 			((ISC_TIMESTAMP_TZ*) to->dsc_address)->timestamp_time = ((ISC_TIME_TZ*) from->dsc_address)->time_time;
 			((ISC_TIMESTAMP_TZ*) to->dsc_address)->timestamp_zone = cb->getSessionTimeZone();
+			TimeZoneUtil::localTimeStampToUtc(*(ISC_TIMESTAMP_TZ*) to->dsc_address);
 			return;
 
 		case dtype_sql_time_tz:
 			// SQL: Copy date fields from CURRENT_DATE and time and time zone fields from the source.
+			//// FIXME:
 			((ISC_TIMESTAMP_TZ*) to->dsc_address)->timestamp_date = cb->getCurDate();
 			((ISC_TIMESTAMP_TZ*) to->dsc_address)->timestamp_time = ((ISC_TIME_TZ*) from->dsc_address)->time_time;
 			((ISC_TIMESTAMP_TZ*) to->dsc_address)->timestamp_zone = ((ISC_TIME_TZ*) from->dsc_address)->time_zone;
@@ -1601,11 +1618,13 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 			((ISC_TIMESTAMP_TZ*) to->dsc_address)->timestamp_date = *(GDS_DATE*) from->dsc_address;
 			((ISC_TIMESTAMP_TZ*) to->dsc_address)->timestamp_time = 0;
 			((ISC_TIMESTAMP_TZ*) to->dsc_address)->timestamp_zone = cb->getSessionTimeZone();
+			TimeZoneUtil::localTimeStampToUtc(*(ISC_TIMESTAMP_TZ*) to->dsc_address);
 			return;
 
 		case dtype_timestamp:
 			*(ISC_TIMESTAMP*) to->dsc_address = *(ISC_TIMESTAMP*) from->dsc_address;
 			((ISC_TIMESTAMP_TZ*) to->dsc_address)->timestamp_zone = cb->getSessionTimeZone();
+			TimeZoneUtil::localTimeStampToUtc(*((ISC_TIMESTAMP_TZ*) to->dsc_address));
 			return;
 
 		default:
@@ -1644,7 +1663,7 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 			return;
 
 		case dtype_timestamp_tz:
-			*(GDS_DATE*) to->dsc_address = TimeZoneUtil::timeStampTzAtZone(
+			*(GDS_DATE*) to->dsc_address = TimeZoneUtil::timeStampTzToTimeStamp(
 				*(ISC_TIMESTAMP_TZ*) from->dsc_address, cb->getSessionTimeZone()).timestamp_date;
 			return;
 
@@ -1683,7 +1702,7 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 
 		case dtype_sql_time_tz:
 			*(ISC_TIME*) to->dsc_address =
-				TimeZoneUtil::timeTzAtZone(*(ISC_TIME_TZ*) from->dsc_address, cb->getSessionTimeZone());
+				TimeZoneUtil::timeTzToTime(*(ISC_TIME_TZ*) from->dsc_address, cb->getSessionTimeZone());
 			return;
 
 		case dtype_timestamp:
@@ -1691,7 +1710,7 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 			return;
 
 		case dtype_timestamp_tz:
-			*(GDS_TIME*) to->dsc_address = TimeZoneUtil::timeStampTzAtZone(
+			*(GDS_TIME*) to->dsc_address = TimeZoneUtil::timeStampTzToTimeStamp(
 				*(ISC_TIMESTAMP_TZ*) from->dsc_address, cb->getSessionTimeZone()).timestamp_time;
 			return;
 
@@ -1731,11 +1750,13 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 		case dtype_sql_time:
 			*(ISC_TIME*) to->dsc_address = *(ISC_TIME*) from->dsc_address;
 			((ISC_TIME_TZ*) to->dsc_address)->time_zone = cb->getSessionTimeZone();
+			TimeZoneUtil::localTimeToUtc(*(ISC_TIME_TZ*) to->dsc_address);
 			return;
 
 		case dtype_timestamp:
 			((ISC_TIME_TZ*) to->dsc_address)->time_time = ((GDS_TIMESTAMP*) from->dsc_address)->timestamp_time;
 			((ISC_TIME_TZ*) to->dsc_address)->time_zone = cb->getSessionTimeZone();
+			TimeZoneUtil::localTimeToUtc(*(ISC_TIME_TZ*) to->dsc_address);
 			return;
 
 		case dtype_timestamp_tz:
@@ -2206,13 +2227,18 @@ static void datetime_to_text(const dsc* from, dsc* to, Callbacks* cb)
 	memset(&times, 0, sizeof(struct tm));
 
 	int	fractions = 0;
+	USHORT timezone;
 
 	switch (from->dsc_dtype)
 	{
 	case dtype_sql_time:
-	case dtype_sql_time_tz:
 		Firebird::TimeStamp::decode_time(*(GDS_TIME*) from->dsc_address,
 			&times.tm_hour, &times.tm_min, &times.tm_sec, &fractions);
+		break;
+
+	case dtype_sql_time_tz:
+		TimeZoneUtil::decodeTime(*(ISC_TIME_TZ*) from->dsc_address, &times, &fractions);
+		timezone = ((ISC_TIME_TZ*) from->dsc_address)->time_zone;
 		break;
 
 	case dtype_sql_date:
@@ -2220,9 +2246,14 @@ static void datetime_to_text(const dsc* from, dsc* to, Callbacks* cb)
 		break;
 
 	case dtype_timestamp:
-	case dtype_timestamp_tz:
 		cb->isVersion4(version4); // Used in the conversion to text some lines below.
 		Firebird::TimeStamp::decode_timestamp(*(GDS_TIMESTAMP*) from->dsc_address, &times, &fractions);
+		break;
+
+	case dtype_timestamp_tz:
+		cb->isVersion4(version4); // Used in the conversion to text some lines below.
+		TimeZoneUtil::decodeTimeStamp(*(ISC_TIMESTAMP_TZ*) from->dsc_address, &times, &fractions);
+		timezone = ((ISC_TIMESTAMP_TZ*) from->dsc_address)->timestamp_zone;
 		break;
 
 	default:
@@ -2231,22 +2262,10 @@ static void datetime_to_text(const dsc* from, dsc* to, Callbacks* cb)
 		break;
 	}
 
-	USHORT timezone;
-
-	switch (from->dsc_dtype)
-	{
-	case dtype_sql_time_tz:
-		timezone = ((ISC_TIME_TZ*) from->dsc_address)->time_zone;
-		break;
-
-	case dtype_timestamp_tz:
-		timezone = ((ISC_TIMESTAMP_TZ*) from->dsc_address)->timestamp_zone;
-		break;
-	}
-
 	// Decode the timestamp into human readable terms
 
-	TEXT temp[36];			// yyyy-mm-dd hh:mm:ss.tttt +th:tm OR dd-MMM-yyyy hh:mm:ss.tttt +th:tm
+	// yyyy-mm-dd hh:mm:ss.tttt +th:tm OR dd-MMM-yyyy hh:mm:ss.tttt +th:tm
+	TEXT temp[27 + TimeZoneUtil::MAX_LEN];
 	TEXT* p = temp;
 
 	// Make a textual date for data types that include it
@@ -3251,7 +3270,9 @@ SINT64 CVT_get_int64(const dsc* desc, SSHORT scale, DecimalStatus decSt, ErrorFu
 	case dtype_blob:
 	case dtype_sql_date:
 	case dtype_sql_time:
+	case dtype_sql_time_tz:
 	case dtype_timestamp:
+	case dtype_timestamp_tz:
 	case dtype_array:
 	case dtype_dbkey:
 	case dtype_boolean:
@@ -3408,7 +3429,7 @@ namespace
 
 	USHORT CommonCallbacks::getSessionTimeZone()
 	{
-		return TimeZoneUtil::UTC_ZONE;
+		return TimeZoneUtil::getSystemTimeZone();
 	}
 
 	void CommonCallbacks::isVersion4(bool& /*v4*/)

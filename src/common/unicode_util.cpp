@@ -277,6 +277,19 @@ private:
 				(Arg::Gds(isc_random) << diag).raise();
 			}
 		}
+
+		inModule = formatAndLoad(inTemplate, aMajorVersion, aMinorVersion);
+		if (!inModule)
+			return;
+
+		getEntryPoint("u_strcmp", inModule, ustrcmp);
+
+		getEntryPoint("ucal_open", inModule, ucalOpen);
+		getEntryPoint("ucal_close", inModule, ucalClose);
+		getEntryPoint("ucal_setMillis", inModule, ucalSetMillis);
+		getEntryPoint("ucal_get", inModule, ucalGet);
+		getEntryPoint("ucal_setDateTime", inModule, ucalSetDateTime);
+		getEntryPoint("ucal_getTimeZoneID", inModule, ucalGetTimeZoneID);
 	}
 
 public:
@@ -302,6 +315,7 @@ public:
 
 private:
 	AutoPtr<ModuleLoader::Module> module;
+	AutoPtr<ModuleLoader::Module> inModule;
 };
 
 static ImplementConversionICU* convIcu = NULL;

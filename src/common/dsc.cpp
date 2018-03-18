@@ -27,6 +27,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "../common/dsc.h"
+#include "../common/TimeZoneUtil.h"
 #include "../jrd/ibase.h"
 #include "../jrd/intl.h"
 #include "../yvalve/gds_proto.h"
@@ -68,8 +69,8 @@ static const USHORT _DSC_convert_to_text_length[DTYPE_TYPE_MAX] =
 	23,							// dtype_dec64		1 + 1 + 1 + 1 + 16(34) + 3(4)
 	42,							// dtype_dec128		+-  .   e   +-  coeff  + exp
 	36,							// dtype_dec_fixed	coeff(34) + 1(+-) + 1(.)
-	20,							// dtype_sql_time_tz   HH:MM:SS.MMMM +NN:NN
-	31							// dtype_timestamp_tz  YYYY-MM-DD HH:MM:SS.MMMM +NN:NN
+	14 + TimeZoneUtil::MAX_LEN,	// dtype_sql_time_tz   HH:MM:SS.MMMM +NN:NN
+	25 + TimeZoneUtil::MAX_LEN	// dtype_timestamp_tz  YYYY-MM-DD HH:MM:SS.MMMM +NN:NN
 };
 
 // Unimplemented names are in lowercase & <brackets>

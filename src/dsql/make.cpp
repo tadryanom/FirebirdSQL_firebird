@@ -145,20 +145,22 @@ ValueExprNode* MAKE_constant(const char* str, dsql_constant_type numeric_flag)
 		{
 			// Setup the constant's descriptor
 
-			EXPECT_DATETIME expect;
+			EXPECT_DATETIME expect1, expect2;
 
 			switch (numeric_flag)
 			{
 				case CONSTANT_DATE:
-					expect = expect_sql_date;
+					expect1 = expect2 = expect_sql_date;
 					break;
 
 				case CONSTANT_TIME:
-					expect = expect_sql_time_tz;
+					expect1 = expect_sql_time_tz;
+					expect2 = expect_sql_time;
 					break;
 
 				case CONSTANT_TIMESTAMP:
-					expect = expect_timestamp_tz;
+					expect1 = expect_timestamp_tz;
+					expect2 = expect_timestamp;
 					break;
 
 				default:
@@ -180,7 +182,10 @@ ValueExprNode* MAKE_constant(const char* str, dsql_constant_type numeric_flag)
 
 			ISC_TIMESTAMP_TZ ts;
 			bool tz;
-			CVT_string_to_datetime(&tmp, &ts, &tz, expect, false, &EngineCallbacks::instance);
+			CVT_string_to_datetime(&tmp, &ts, &tz, expect1, false, &EngineCallbacks::instance);
+
+			if (!tz && expect1 != expect2)
+				CVT_string_to_datetime(&tmp, &ts, &tz, expect2, false, &EngineCallbacks::instance);
 
 			switch (numeric_flag)
 			{
