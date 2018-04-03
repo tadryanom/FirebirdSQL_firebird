@@ -293,6 +293,20 @@ ISC_TIMESTAMP TimeZoneUtil::timeStampTzToTimeStamp(const ISC_TIMESTAMP_TZ& timeS
 }
 
 // Converts a time from local to UTC.
+void TimeZoneUtil::localTimeToUtc(ISC_TIME& time, Callbacks* cb)
+{
+	//// TODO:
+	ISC_TIMESTAMP_TZ tempTimeStampTz;
+	tempTimeStampTz.timestamp_date = TimeStamp::getCurrentTimeStamp().value().timestamp_date;
+	tempTimeStampTz.timestamp_time = time;
+	tempTimeStampTz.timestamp_zone = cb->getSessionTimeZone();
+
+	localTimeStampToUtc(tempTimeStampTz);
+
+	time = tempTimeStampTz.timestamp_time;
+}
+
+// Converts a time from local to UTC.
 void TimeZoneUtil::localTimeToUtc(ISC_TIME_TZ& timeTz)
 {
 	//// TODO:
@@ -304,6 +318,20 @@ void TimeZoneUtil::localTimeToUtc(ISC_TIME_TZ& timeTz)
 	localTimeStampToUtc(tempTimeStampTz);
 
 	timeTz.time_time = tempTimeStampTz.timestamp_time;
+}
+
+// Converts a timestamp from its local datetime fields to UTC.
+void TimeZoneUtil::localTimeStampToUtc(ISC_TIMESTAMP& timeStamp, Callbacks* cb)
+{
+	ISC_TIMESTAMP_TZ tempTimeStampTz;
+	tempTimeStampTz.timestamp_date = timeStamp.timestamp_date;
+	tempTimeStampTz.timestamp_time = timeStamp.timestamp_time;
+	tempTimeStampTz.timestamp_zone = cb->getSessionTimeZone();
+
+	localTimeStampToUtc(tempTimeStampTz);
+
+	timeStamp.timestamp_date = tempTimeStampTz.timestamp_date;
+	timeStamp.timestamp_time = tempTimeStampTz.timestamp_time;
 }
 
 // Converts a timestamp from its local datetime fields to UTC.

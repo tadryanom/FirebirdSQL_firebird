@@ -28,6 +28,7 @@
 #define COMMON_TIME_ZONE_UTIL_H
 
 #include "../common/classes/fb_string.h"
+#include "../common/cvt.h"
 
 namespace Firebird {
 
@@ -53,7 +54,10 @@ public:
 	static ISC_TIME timeTzToTime(const ISC_TIME_TZ& timeTz, USHORT toTimeZone);
 	static ISC_TIMESTAMP timeStampTzToTimeStamp(const ISC_TIMESTAMP_TZ& timeStampTz, USHORT toTimeZone);
 
+	static void localTimeToUtc(ISC_TIME& time, Callbacks* cb);
 	static void localTimeToUtc(ISC_TIME_TZ& timeTz);
+
+	static void localTimeStampToUtc(ISC_TIMESTAMP& timeStamp, Callbacks* cb);
 	static void localTimeStampToUtc(ISC_TIMESTAMP_TZ& timeStampTz);
 
 	static void decodeTime(const ISC_TIME_TZ& timeTz, struct tm* times, int* fractions = NULL);

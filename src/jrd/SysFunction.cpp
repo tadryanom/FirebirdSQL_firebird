@@ -515,8 +515,8 @@ void setParamsDateDiff(DataTypeUtilBase*, const SysFunction*, int argsCount, dsc
 	{
 		if (args[1]->isUnknown() && args[2]->isUnknown())
 		{
-			args[1]->makeTimestamp();
-			args[2]->makeTimestamp();
+			args[1]->makeTimestamp();	//// TODO:
+			args[2]->makeTimestamp();	//// TODO:
 		}
 		else if (args[1]->isUnknown())
 			*args[1] = *args[2];
@@ -2098,7 +2098,6 @@ dsc* evlDateAdd(thread_db* tdbb, const SysFunction* function, const NestValueArr
 }
 
 
-//// FIXME:
 dsc* evlDateDiff(thread_db* tdbb, const SysFunction* function, const NestValueArray& args,
 	impure_value* impure)
 {
@@ -2123,17 +2122,25 @@ dsc* evlDateDiff(thread_db* tdbb, const SysFunction* function, const NestValueAr
 	switch (value1Dsc->dsc_dtype)
 	{
 		case dtype_sql_time:
-			timestamp1.value().timestamp_time = *(GDS_TIME *) value1Dsc->dsc_address;
+		case dtype_sql_time_tz:
+			timestamp1.value().timestamp_time = *(GDS_TIME*) value1Dsc->dsc_address;
 			timestamp1.value().timestamp_date = 0;
+
+			if (value1Dsc->dsc_dtype == dtype_sql_time && value2Dsc->isDateTimeTz())
+				TimeZoneUtil::localTimeToUtc(timestamp1.value().timestamp_time, &EngineCallbacks::instance);
 			break;
 
 		case dtype_sql_date:
-			timestamp1.value().timestamp_date = *(GDS_DATE *) value1Dsc->dsc_address;
+			timestamp1.value().timestamp_date = *(GDS_DATE*) value1Dsc->dsc_address;
 			timestamp1.value().timestamp_time = 0;
 			break;
 
 		case dtype_timestamp:
-			timestamp1.value() = *(GDS_TIMESTAMP *) value1Dsc->dsc_address;
+		case dtype_timestamp_tz:
+			timestamp1.value() = *(GDS_TIMESTAMP*) value1Dsc->dsc_address;
+
+			if (value1Dsc->dsc_dtype == dtype_timestamp && value2Dsc->isDateTimeTz())
+				TimeZoneUtil::localTimeStampToUtc(timestamp1.value(), &EngineCallbacks::instance);
 			break;
 
 		default:
@@ -2148,17 +2155,25 @@ dsc* evlDateDiff(thread_db* tdbb, const SysFunction* function, const NestValueAr
 	switch (value2Dsc->dsc_dtype)
 	{
 		case dtype_sql_time:
-			timestamp2.value().timestamp_time = *(GDS_TIME *) value2Dsc->dsc_address;
+		case dtype_sql_time_tz:
+			timestamp2.value().timestamp_time = *(GDS_TIME*) value2Dsc->dsc_address;
 			timestamp2.value().timestamp_date = 0;
+
+			if (value2Dsc->dsc_dtype == dtype_sql_time && value1Dsc->isDateTimeTz())
+				TimeZoneUtil::localTimeToUtc(timestamp2.value().timestamp_time, &EngineCallbacks::instance);
 			break;
 
 		case dtype_sql_date:
-			timestamp2.value().timestamp_date = *(GDS_DATE *) value2Dsc->dsc_address;
+			timestamp2.value().timestamp_date = *(GDS_DATE*) value2Dsc->dsc_address;
 			timestamp2.value().timestamp_time = 0;
 			break;
 
 		case dtype_timestamp:
-			timestamp2.value() = *(GDS_TIMESTAMP *) value2Dsc->dsc_address;
+		case dtype_timestamp_tz:
+			timestamp2.value() = *(GDS_TIMESTAMP*) value2Dsc->dsc_address;
+
+			if (value2Dsc->dsc_dtype == dtype_timestamp && value1Dsc->isDateTimeTz())
+				TimeZoneUtil::localTimeStampToUtc(timestamp2.value(), &EngineCallbacks::instance);
 			break;
 
 		default:
@@ -2199,7 +2214,7 @@ dsc* evlDateDiff(thread_db* tdbb, const SysFunction* function, const NestValueAr
 		case blr_extract_month:
 		case blr_extract_day:
 		case blr_extract_week:
-			if (value1Dsc->dsc_dtype == dtype_sql_time || value2Dsc->dsc_dtype == dtype_sql_time)
+			if (value1Dsc->isTime() || value2Dsc->isTime())
 			{
 				status_exception::raise(Arg::Gds(isc_expression_eval_err) <<
 											Arg::Gds(isc_sysf_invalid_timediff) <<
@@ -2212,22 +2227,17 @@ dsc* evlDateDiff(thread_db* tdbb, const SysFunction* function, const NestValueAr
 		case blr_extract_second:
 		case blr_extract_millisecond:
 			{
-				//if (value1Dsc->dsc_dtype == dtype_sql_date || value2Dsc->dsc_dtype == dtype_sql_date)
-				//	status_exception::raise(Arg::Gds(isc_expression_eval_err));
-
 				// ASF: also throw error if one value is TIMESTAMP and the other is TIME
 				// CVC: Or if one value is DATE and the other is TIME.
-				const int type1 = value1Dsc->dsc_dtype;
-				const int type2 = value2Dsc->dsc_dtype;
-				if ((type1 == dtype_timestamp && type2 == dtype_sql_time) ||
-					(type1 == dtype_sql_time && type2 == dtype_timestamp))
+				if ((value1Dsc->isTimeStamp() && value2Dsc->isTime()) ||
+					(value1Dsc->isTime() && value2Dsc->isTimeStamp()))
 				{
 					status_exception::raise(Arg::Gds(isc_expression_eval_err) <<
 												Arg::Gds(isc_sysf_invalid_tstamptimediff) <<
 													Arg::Str(function->name));
 				}
-				if ((type1 == dtype_sql_date && type2 == dtype_sql_time) ||
-					(type1 == dtype_sql_time && type2 == dtype_sql_date))
+				if ((value1Dsc->dsc_dtype == dtype_sql_date && value2Dsc->isTime()) ||
+					(value1Dsc->isTime() && value2Dsc->dsc_dtype == dtype_sql_date))
 				{
 					status_exception::raise(Arg::Gds(isc_expression_eval_err) <<
 												Arg::Gds(isc_sysf_invalid_datetimediff) <<
