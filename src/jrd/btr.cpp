@@ -2566,7 +2566,7 @@ static void compress(thread_db* tdbb,
 	else if (itype == idx_timestamp)
 	{
 		GDS_TIMESTAMP timestamp;
-		timestamp = MOV_get_timestamp(desc);	//// FIXME: wrong for TZ
+		timestamp = MOV_get_timestamp(desc);
 		temp.temp_sint64 = ((SINT64) (timestamp.timestamp_date) *
 			(SINT64) (NoThrowTimeStamp::SECONDS_PER_DAY * ISC_TIME_SECONDS_PRECISION)) +
 			(SINT64) (timestamp.timestamp_time);
@@ -2578,7 +2578,22 @@ static void compress(thread_db* tdbb,
 				   ((const ULONG*) desc->dsc_address)[1]);
 		fprintf(stderr, "TIMESTAMP2: %20" QUADFORMAT "d ", temp.temp_sint64);
 #endif
+	}
+	else if (itype == idx_timestamp_tz)
+	{
+		ISC_TIMESTAMP_TZ timestamp;
+		timestamp = MOV_get_timestamp_tz(desc);
+		temp.temp_sint64 = ((SINT64) (timestamp.timestamp_date) *
+			(SINT64) (NoThrowTimeStamp::SECONDS_PER_DAY * ISC_TIME_SECONDS_PRECISION)) +
+			(SINT64) (timestamp.timestamp_time);
+		temp_copy_length = sizeof(SINT64);
 
+#ifdef DEBUG_INDEXKEY
+		fprintf(stderr, "TIMESTAMP2: %d:%u ",
+				   ((const SLONG*) desc->dsc_address)[0],
+				   ((const ULONG*) desc->dsc_address)[1]);
+		fprintf(stderr, "TIMESTAMP2: %20" QUADFORMAT "d ", temp.temp_sint64);
+#endif
 	}
 	else if (itype == idx_sql_date)
 	{
