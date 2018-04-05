@@ -89,6 +89,7 @@
     <ClCompile Include="..\..\..\src\common\TextType.cpp" />
     <ClCompile Include="..\..\..\src\common\ThreadData.cpp" />
     <ClCompile Include="..\..\..\src\common\ThreadStart.cpp" />
+    <ClCompile Include="..\..\..\src\common\TimeZoneUtil.cpp" />
     <ClCompile Include="..\..\..\src\common\Tokens.cpp" />
     <ClCompile Include="..\..\..\src\common\unicode_util.cpp" />
     <ClCompile Include="..\..\..\src\common\utils.cpp" />
@@ -197,6 +198,7 @@
     <ClInclude Include="..\..\..\src\common\TextType.h" />
     <ClInclude Include="..\..\..\src\common\ThreadData.h" />
     <ClInclude Include="..\..\..\src\common\ThreadStart.h" />
+    <ClInclude Include="..\..\..\src\common\TimeZoneUtil.h" />
     <ClInclude Include="..\..\..\src\common\Tokens.h" />
     <ClInclude Include="..\..\..\src\common\unicode_util.h" />
     <ClInclude Include="..\..\..\src\common\UtilSvc.h" />

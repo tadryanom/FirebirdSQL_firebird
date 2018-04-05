@@ -225,6 +225,9 @@
     <ClCompile Include="..\..\..\src\common\classes\BlobWrapper.cpp">
       <Filter>classes</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\common\TimeZoneUtil.cpp">
+      <Filter>common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\common\xdr_proto.h">
@@ -546,6 +549,9 @@
       <Filter>headers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\common\classes\BlobWrapper.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\common\TimeZoneUtil.h">
       <Filter>headers</Filter>
     </ClInclude>
   </ItemGroup>

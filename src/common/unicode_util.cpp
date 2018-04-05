@@ -257,6 +257,8 @@ private:
 		getEntryPoint("ucnv_setFromUCallBack", module, ucnv_setFromUCallBack);
 		getEntryPoint("ucnv_setToUCallBack", module, ucnv_setToUCallBack);
 
+		getEntryPoint("u_strcmp", module, ustrcmp);
+
 #ifdef WIN_NT
 		if (uSetDataDirectory)
 		{
@@ -281,8 +283,6 @@ private:
 		inModule = formatAndLoad(inTemplate, aMajorVersion, aMinorVersion);
 		if (!inModule)
 			return;
-
-		getEntryPoint("u_strcmp", inModule, ustrcmp);
 
 		getEntryPoint("ucal_open", inModule, ucalOpen);
 		getEntryPoint("ucal_close", inModule, ucalClose);
