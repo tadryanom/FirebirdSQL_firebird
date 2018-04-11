@@ -798,8 +798,6 @@ void Sort::diddleKey(UCHAR* record, bool direction)
 				complement = !complement;
 			break;
 
-		//// FIXME: SKD_time_tz and SKD_timestamp_tz
-
 		case SKD_long:
 		case SKD_short:
 		case SKD_quad:
@@ -807,6 +805,16 @@ void Sort::diddleKey(UCHAR* record, bool direction)
 		case SKD_sql_date:
 		case SKD_int64:
 			*p ^= 1 << 7;
+			break;
+
+		case SKD_sql_time_tz:
+			if (direction)
+				p[4] = p[5] = 0;	// clear TZ field
+			break;
+
+		case SKD_timestamp_tz:
+			if (direction)
+				p[8] = p[9] = p[10] = p[11] = 0;	// clear TZ field
 			break;
 
 		case SKD_dec64:
@@ -934,11 +942,21 @@ void Sort::diddleKey(UCHAR* record, bool direction)
 		switch (key->skd_dtype)
 		{
 		case SKD_timestamp:
-		case SKD_timestamp_tz:
 		case SKD_sql_time:
-		case SKD_sql_time_tz:
 		case SKD_sql_date:
 			p[3] ^= 1 << 7;
+			break;
+
+		case SKD_sql_time_tz:
+			p[3] ^= 1 << 7;
+			if (direction)
+				p[4] = p[5] = 0;	// clear TZ field
+			break;
+
+		case SKD_timestamp_tz:
+			p[3] ^= 1 << 7;
+			if (direction)
+				p[8] = p[9] = p[10] = p[11] = 0;	// clear TZ field
 			break;
 
 		case SKD_ulong:
