@@ -352,9 +352,6 @@ fb_get_transaction_handle
 fb_database_crypt_callback
 fb_dsql_set_timeout
 
-isc_decode_sql_time_tz
-isc_decode_timestamp_tz
-
 # Other misc functions
 
 isc_ftof

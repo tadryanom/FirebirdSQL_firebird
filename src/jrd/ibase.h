@@ -382,20 +382,8 @@ void ISC_EXPORT isc_decode_sql_date(const ISC_DATE*,
 void ISC_EXPORT isc_decode_sql_time(const ISC_TIME*,
 									void*);
 
-void ISC_EXPORT isc_decode_sql_time_tz(const ISC_TIME_TZ*,
-									   void*,
-									   ISC_ULONG*,
-									   char*,
-									   unsigned short);
-
 void ISC_EXPORT isc_decode_timestamp(const ISC_TIMESTAMP*,
 									 void*);
-
-void ISC_EXPORT isc_decode_timestamp_tz(const ISC_TIMESTAMP_TZ*,
-										void*,
-										ISC_ULONG*,
-										char*,
-										unsigned short);
 
 ISC_STATUS ISC_EXPORT isc_detach_database(ISC_STATUS *,
 										  isc_db_handle *);

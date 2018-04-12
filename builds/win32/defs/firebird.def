@@ -357,9 +357,6 @@ EXPORTS
 	fb_get_transaction_handle
 	fb_database_crypt_callback
 
-	isc_decode_sql_time_tz
-	isc_decode_timestamp_tz
-
 	gds__trace
 	gds__trace_raw
 	gds__trace_printer

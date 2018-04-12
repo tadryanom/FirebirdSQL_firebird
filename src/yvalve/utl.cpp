@@ -59,6 +59,7 @@
 #include "../yvalve/PluginManager.h"
 #include "../jrd/constants.h"
 #include "../jrd/build_no.h"
+#include "../common/TimeZoneUtil.h"
 #include "../common/classes/ClumpletWriter.h"
 #include "../common/utils_proto.h"
 #include "../common/classes/MetaName.h"
@@ -663,6 +664,109 @@ void UtilInterface::decodeTime(ISC_TIME time,
 		*seconds = times.tm_sec;
 	if (fractions)
 		*fractions = time % ISC_TIME_SECONDS_PRECISION;
+}
+
+void UtilInterface::decodeTimeTz(CheckStatusWrapper* status, const ISC_TIME_TZ* timeTz,
+	unsigned* hours, unsigned* minutes, unsigned* seconds, unsigned* fractions,
+	unsigned timeZoneBufferLength, char* timeZoneBuffer)
+{
+	try
+	{
+		tm times;
+		int intFractions;
+		TimeZoneUtil::decodeTime(*timeTz, &times, &intFractions);
+
+		if (hours)
+			*hours = times.tm_hour;
+
+		if (minutes)
+			*minutes = times.tm_min;
+
+		if (seconds)
+			*seconds = times.tm_sec;
+
+		if (fractions)
+			*fractions = (unsigned) intFractions;
+
+		if (timeZoneBuffer)
+			TimeZoneUtil::format(timeZoneBuffer, timeZoneBufferLength, timeTz->time_zone);
+	}
+	catch (const Exception& ex)
+	{
+		ex.stuffException(status);
+	}
+}
+
+void UtilInterface::encodeTimeTz(CheckStatusWrapper* status, ISC_TIME_TZ* timeTz,
+	unsigned hours, unsigned minutes, unsigned seconds, unsigned fractions, const char* timeZone)
+{
+	try
+	{
+		timeTz->time_time = encodeTime(hours, minutes, seconds, fractions);
+		timeTz->time_zone = TimeZoneUtil::parse(timeZone, strlen(timeZone));
+		TimeZoneUtil::localTimeToUtc(*timeTz);
+	}
+	catch (const Exception& ex)
+	{
+		ex.stuffException(status);
+	}
+}
+
+void UtilInterface::decodeTimeStampTz(CheckStatusWrapper* status, const ISC_TIMESTAMP_TZ* timeStampTz,
+	uint* year, uint* month, uint* day, unsigned* hours, unsigned* minutes, unsigned* seconds, unsigned* fractions,
+	unsigned timeZoneBufferLength, char* timeZoneBuffer)
+{
+	try
+	{
+		tm times;
+		int intFractions;
+		TimeZoneUtil::decodeTimeStamp(*timeStampTz, &times, &intFractions);
+
+		if (year)
+			*year = times.tm_year + 1900;
+
+		if (month)
+			*month = times.tm_mon + 1;
+
+		if (day)
+			*day = times.tm_mday;
+
+		if (hours)
+			*hours = times.tm_hour;
+
+		if (minutes)
+			*minutes = times.tm_min;
+
+		if (seconds)
+			*seconds = times.tm_sec;
+
+		if (fractions)
+			*fractions = (unsigned) intFractions;
+
+		if (timeZoneBuffer)
+			TimeZoneUtil::format(timeZoneBuffer, timeZoneBufferLength, timeStampTz->timestamp_zone);
+	}
+	catch (const Exception& ex)
+	{
+		ex.stuffException(status);
+	}
+}
+
+void UtilInterface::encodeTimeStampTz(CheckStatusWrapper* status, ISC_TIMESTAMP_TZ* timeStampTz,
+	uint year, uint month, uint day, unsigned hours, unsigned minutes, unsigned seconds, unsigned fractions,
+	const char* timeZone)
+{
+	try
+	{
+		timeStampTz->timestamp_date = encodeDate(year, month, day);
+		timeStampTz->timestamp_time = encodeTime(hours, minutes, seconds, fractions);
+		timeStampTz->timestamp_zone = TimeZoneUtil::parse(timeZone, strlen(timeZone));
+		TimeZoneUtil::localTimeStampToUtc(*timeStampTz);
+	}
+	catch (const Exception& ex)
+	{
+		ex.stuffException(status);
+	}
 }
 
 ISC_DATE UtilInterface::encodeDate(unsigned year, unsigned month, unsigned day)
