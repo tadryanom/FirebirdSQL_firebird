@@ -26,12 +26,21 @@
 
 //// TODO: Configure ICU time zone data files.
 //// TODO: Update Windows ICU.
+
+// Uncomment to generate list of time zones to be updated in TimeZones.h
+//#define TZ_UPDATE
+
 #include "firebird.h"
 #include "../common/TimeZoneUtil.h"
 #include "../common/StatusHolder.h"
 #include "../common/unicode_util.h"
 #include "../common/classes/timestamp.h"
+#include "../common/classes/GenericMap.h"
 #include "unicode/ucal.h"
+
+#ifdef TZ_UPDATE
+#include "../common/classes/objects_array.h"
+#endif
 
 using namespace Firebird;
 
@@ -39,9 +48,13 @@ using namespace Firebird;
 
 struct TimeZoneDesc
 {
-	const char* abbr;	//// FIXME: remove
+	const char* asciiName;
 	const UChar* icuName;
 };
+
+//-------------------------------------
+
+#include "./TimeZones.h"
 
 //-------------------------------------
 
@@ -55,27 +68,23 @@ static void skipSpaces(const char*& p, const char* end);
 
 //-------------------------------------
 
-static const UChar TZSTR_GMT[] = {
-	'G', 'M', 'T', '\0'};
-static const UChar TZSTR_AMERICA_SAO_PAULO[] = {
-	'A', 'm', 'e', 'r', 'i', 'c', 'a', '/', 'S', 'a', 'o', '_', 'P', 'a', 'u', 'l', 'o', '\0'};
-static const UChar TZSTR_AMERICA_LOS_ANGELES[] = {
-	'A', 'm', 'e', 'r', 'i', 'c', 'a', '/', 'L', 'o', 's', '_', 'A', 'n', 'g', 'e', 'l', 'e', 's', '\0'};
-
-// Do not change order of items in this array! The index corresponds to a TimeZone ID, which must be fixed!
-static const TimeZoneDesc TIME_ZONE_LIST[] = {	//// FIXME:
-	{"GMT", TZSTR_GMT},
-	{"America/Sao_Paulo", TZSTR_AMERICA_SAO_PAULO},
-	{"America/Los_Angeles", TZSTR_AMERICA_LOS_ANGELES}
-};
-
-//-------------------------------------
-
 struct TimeZoneStartup
 {
-	TimeZoneStartup(MemoryPool& p)
-		: systemTimeZone(TimeZoneUtil::UTC_ZONE)
+	TimeZoneStartup(MemoryPool& pool)
+		: systemTimeZone(TimeZoneUtil::UTC_ZONE),
+		  nameIdMap(pool)
 	{
+#if defined DEV_BUILD && defined TZ_UPDATE
+		tzUpdate();
+#endif
+
+		for (USHORT i = 0; i < FB_NELEM(TIME_ZONE_LIST); ++i)
+		{
+			string s(TIME_ZONE_LIST[i].asciiName);
+			s.upper();
+			nameIdMap.put(s, i);
+		}
+
 		UErrorCode icuErrorCode = U_ZERO_ERROR;
 
 		Jrd::UnicodeUtil::ConversionICU& icuLib = Jrd::UnicodeUtil::getConversionICU();
@@ -90,18 +99,14 @@ struct TimeZoneStartup
 		UChar buffer[TimeZoneUtil::MAX_SIZE];
 		bool found = false;
 
-		icuLib.ucalGetTimeZoneID(icuCalendar, buffer, FB_NELEM(buffer), &icuErrorCode);
+		int32_t len = icuLib.ucalGetTimeZoneID(icuCalendar, buffer, FB_NELEM(buffer), &icuErrorCode);
 
 		if (!U_FAILURE(icuErrorCode))
 		{
-			for (unsigned i = 0; i < FB_NELEM(TIME_ZONE_LIST) && !found; ++i)
-			{
-				if (icuLib.ustrcmp(TIME_ZONE_LIST[i].icuName, buffer) == 0)
-				{
-					systemTimeZone = MAX_USHORT - i;
-					found = true;
-				}
-			}
+			bool error;
+			string bufferStrUnicode(reinterpret_cast<const char*>(buffer), len * sizeof(USHORT));
+			string bufferStrAscii(IntlUtil::convertUtf16ToAscii(bufferStrUnicode, &error));
+			found = getId(bufferStrAscii, systemTimeZone);
 		}
 		else
 			icuErrorCode = U_ZERO_ERROR;
@@ -130,7 +135,102 @@ struct TimeZoneStartup
 			gds__log("Cannot retrieve the system time zone: %d.", int(icuErrorCode));
 	}
 
+	bool getId(string name, USHORT& id)
+	{
+		USHORT index;
+		name.upper();
+
+		if (nameIdMap.get(name, index))
+		{
+			id = MAX_USHORT - index;
+			return true;
+		}
+		else
+			return false;
+	}
+
+#if defined DEV_BUILD && defined TZ_UPDATE
+	void tzUpdate()
+	{
+		SortedObjectsArray<string> currentZones, icuZones;
+
+		for (unsigned i = 0; i < FB_NELEM(TIME_ZONE_LIST); ++i)
+			currentZones.push(TIME_ZONE_LIST[i].asciiName);
+
+		Jrd::UnicodeUtil::ConversionICU& icuLib = Jrd::UnicodeUtil::getConversionICU();
+		UErrorCode icuErrorCode = U_ZERO_ERROR;
+
+		UEnumeration* uenum = icuLib.ucalOpenTimeZones(&icuErrorCode);
+		int32_t length;
+
+		while (const UChar* str = icuLib.uenumUnext(uenum, &length, &icuErrorCode))
+		{
+			char buffer[256];
+
+			for (int i = 0; i <= length; ++i)
+				buffer[i] = (char) str[i];
+
+			icuZones.push(buffer);
+		}
+
+		icuLib.uenumClose(uenum);
+
+		for (auto const& zone : currentZones)
+		{
+			FB_SIZE_T pos;
+
+			if (icuZones.find(zone, pos))
+				icuZones.remove(pos);
+			else
+				printf("--> %s does not exist in ICU.\n", zone.c_str());
+		}
+
+		ObjectsArray<string> newZones;
+
+		for (int i = 0; i < FB_NELEM(TIME_ZONE_LIST); ++i)
+			newZones.push(TIME_ZONE_LIST[i].asciiName);
+
+		for (auto const& zone : icuZones)
+			newZones.push(zone);
+
+		printf("// The content of this file is generated with help of macro TZ_UPDATE.\n\n");
+
+		int index = 0;
+
+		for (auto const& zone : newZones)
+		{
+			printf("static const UChar TZSTR_%d[] = {", index);
+
+			for (int i = 0; i < zone.length(); ++i)
+				printf("'%c', ", zone[i]);
+
+			printf("'\\0'};\n");
+
+			++index;
+		}
+
+		printf("\n");
+
+		printf("// Do not change order of items in this array! The index corresponds to a TimeZone ID, which must be fixed!\n");
+		printf("static const TimeZoneDesc TIME_ZONE_LIST[] = {");
+
+		index = 0;
+
+		for (auto const& zone : newZones)
+		{
+			printf("%s\n\t{\"%s\", TZSTR_%d}", (index == 0 ? "" : ","), zone.c_str(), index);
+			++index;
+		}
+
+		printf("\n");
+		printf("};\n\n");
+	}
+#endif	// defined DEV_BUILD && defined TZ_UPDATE
+
 	USHORT systemTimeZone;
+
+private:
+	GenericMap<Pair<Left<string, USHORT> > > nameIdMap;
 };
 
 static InitInstance<TimeZoneStartup> timeZoneStartup;
@@ -204,7 +304,7 @@ unsigned TimeZoneUtil::format(char* buffer, size_t bufferSize, USHORT timeZone)
 	}
 	else
 	{
-		strncpy(buffer, getDesc(timeZone).abbr, bufferSize);
+		strncpy(buffer, getDesc(timeZone).asciiName, bufferSize);
 
 		p += strlen(buffer);
 	}
@@ -487,14 +587,11 @@ static USHORT makeFromRegion(const char* str, unsigned strLen)
 
 	if (str == end)
 	{
-		//// FIXME:
-		for (unsigned i = 0; i < FB_NELEM(TIME_ZONE_LIST); ++i)
-		{
-			const char* abbr = TIME_ZONE_LIST[i].abbr;
+		string s(start, len);
+		USHORT id;
 
-			if (len == strlen(abbr) && fb_utils::strnicmp(start, abbr, len) == 0)
-				return MAX_USHORT - i;
-		}
+		if (timeZoneStartup().getId(s, id))
+			return id;
 	}
 
 	status_exception::raise(Arg::Gds(isc_random) << "Invalid time zone region");	//// TODO:

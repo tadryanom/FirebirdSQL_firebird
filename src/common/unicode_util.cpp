@@ -290,6 +290,13 @@ private:
 		getEntryPoint("ucal_get", inModule, ucalGet);
 		getEntryPoint("ucal_setDateTime", inModule, ucalSetDateTime);
 		getEntryPoint("ucal_getTimeZoneID", inModule, ucalGetTimeZoneID);
+
+#ifdef DEV_BUILD
+		getEntryPoint("ucal_openTimeZones", inModule, ucalOpenTimeZones);
+
+		getEntryPoint("uenum_close", inModule, uenumClose);
+		getEntryPoint("uenum_unext", inModule, uenumUnext);
+#endif
 	}
 
 public:
