@@ -50,7 +50,7 @@ public:
 	static const unsigned ONE_DAY = 24 * 60;	// used for offset encoding
 	static const USHORT UTC_ZONE = ONE_DAY + 0;
 
-	static const unsigned MAX_LEN = 25;	//// FIXME:
+	static const unsigned MAX_LEN = 32;
 	static const unsigned MAX_SIZE = MAX_LEN + 1;
 
 public:
