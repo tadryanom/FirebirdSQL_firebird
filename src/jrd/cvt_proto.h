@@ -59,7 +59,8 @@ namespace Jrd
 		virtual void validateData(CharSet* toCharset, SLONG length, const UCHAR* q);
 		virtual void validateLength(CharSet* toCharset, SLONG toLength, const UCHAR* start,
 			const USHORT to_size);
-		virtual SLONG getCurDate();
+		virtual SLONG getLocalDate();
+		virtual ISC_TIMESTAMP getCurrentTimeStampUtc();
 		virtual USHORT getSessionTimeZone();
 		virtual void isVersion4(bool& v4);
 

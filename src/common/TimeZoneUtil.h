@@ -44,6 +44,8 @@
 
 namespace Firebird {
 
+class NoThrowTimeStamp;
+
 class TimeZoneUtil
 {
 public:
@@ -63,17 +65,36 @@ public:
 
 	static void extractOffset(const ISC_TIMESTAMP_TZ& timeStampTz, int* sign, unsigned* tzh, unsigned* tzm);
 
-	static ISC_TIME timeTzToTime(const ISC_TIME_TZ& timeTz, USHORT toTimeZone);
+	static ISC_TIME timeTzToTime(const ISC_TIME_TZ& timeTz, USHORT toTimeZone, Callbacks* cb);
 	static ISC_TIMESTAMP timeStampTzToTimeStamp(const ISC_TIMESTAMP_TZ& timeStampTz, USHORT toTimeZone);
 
 	static void localTimeToUtc(ISC_TIME& time, Callbacks* cb);
-	static void localTimeToUtc(ISC_TIME_TZ& timeTz);
+	static void localTimeToUtc(ISC_TIME_TZ& timeTz, Callbacks* cb);
 
 	static void localTimeStampToUtc(ISC_TIMESTAMP& timeStamp, Callbacks* cb);
 	static void localTimeStampToUtc(ISC_TIMESTAMP_TZ& timeStampTz);
 
-	static void decodeTime(const ISC_TIME_TZ& timeTz, struct tm* times, int* fractions = NULL);
+	static void decodeTime(const ISC_TIME_TZ& timeTz, Callbacks* cb, struct tm* times, int* fractions = NULL);
 	static void decodeTimeStamp(const ISC_TIMESTAMP_TZ& timeStampTz, struct tm* times, int* fractions = NULL);
+
+	static ISC_TIMESTAMP_TZ getCurrentTimeStampUtc();
+
+	static void validateTimeStampUtc(NoThrowTimeStamp& ts);
+
+	static ISC_TIMESTAMP_TZ cvtTimeToTimeStampTz(const ISC_TIME& time, Callbacks* cb);
+	static ISC_TIME_TZ cvtTimeToTimeTz(const ISC_TIME& time, Callbacks* cb);
+
+	static ISC_TIMESTAMP_TZ cvtTimeTzToTimeStampTz(const ISC_TIME_TZ& timeTz, Callbacks* cb);
+	static ISC_TIMESTAMP cvtTimeTzToTimeStamp(const ISC_TIME_TZ& timeTz, Callbacks* cb);
+	static ISC_TIME cvtTimeTzToTime(const ISC_TIME_TZ& timeTz, Callbacks* cb);
+
+	static ISC_TIME_TZ cvtTimeStampTzToTimeTz(const ISC_TIMESTAMP_TZ& timeStampTz);
+	static ISC_TIMESTAMP cvtTimeStampTzToTimeStamp(const ISC_TIMESTAMP_TZ& timeStampTz, Callbacks* cb);
+
+	static ISC_TIMESTAMP_TZ cvtTimeStampToTimeStampTz(const ISC_TIMESTAMP& timeStamp, Callbacks* cb);
+	static ISC_TIME_TZ cvtTimeStampToTimeTz(const ISC_TIMESTAMP& timeStamp, Callbacks* cb);
+
+	static ISC_TIMESTAMP_TZ cvtDateToTimeStampTz(const ISC_DATE& date, Callbacks* cb);
 };
 
 }	// namespace Firebird

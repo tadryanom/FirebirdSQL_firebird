@@ -505,7 +505,7 @@ void setParamsDateAdd(DataTypeUtilBase*, const SysFunction*, int argsCount, dsc*
 	}
 
 	if (argsCount >= 3 && args[2]->isUnknown())
-		args[2]->makeTimestamp();	//// TODO:
+		args[2]->makeTimestamp();
 }
 
 
@@ -515,8 +515,8 @@ void setParamsDateDiff(DataTypeUtilBase*, const SysFunction*, int argsCount, dsc
 	{
 		if (args[1]->isUnknown() && args[2]->isUnknown())
 		{
-			args[1]->makeTimestamp();	//// TODO:
-			args[2]->makeTimestamp();	//// TODO:
+			args[1]->makeTimestamp();
+			args[2]->makeTimestamp();
 		}
 		else if (args[1]->isUnknown())
 			*args[1] = *args[2];
@@ -531,7 +531,7 @@ void setParamsFirstLastDay(DataTypeUtilBase*, const SysFunction*, int argsCount,
 	if (argsCount >= 2)
 	{
 		if (args[1]->isUnknown())
-			args[1]->makeTimestamp();	//// TODO:
+			args[1]->makeTimestamp();
 	}
 }
 

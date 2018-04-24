@@ -507,17 +507,32 @@ CHARSET_ID EngineCallbacks::getChid(const dsc* to)
 }
 
 
-SLONG EngineCallbacks::getCurDate()
+SLONG EngineCallbacks::getLocalDate()
 {
 	thread_db* tdbb = JRD_get_thread_data();
 
 	if (tdbb && (tdbb->getType() == ThreadData::tddDBB) && tdbb->getRequest())
 	{
-		fb_assert(!tdbb->getRequest()->req_timestamp.isEmpty());
-		return tdbb->getRequest()->req_timestamp.value().timestamp_date;
+		fb_assert(!tdbb->getRequest()->req_timestamp_utc.isEmpty());
+		return tdbb->getRequest()->getLocalTimeStamp().value().timestamp_date;
 	}
 
-	return Firebird::TimeStamp::getCurrentTimeStamp().value().timestamp_date;
+	return TimeZoneUtil::timeStampTzToTimeStamp(
+		TimeZoneUtil::getCurrentTimeStampUtc(), getSessionTimeZone()).timestamp_date;
+}
+
+
+ISC_TIMESTAMP EngineCallbacks::getCurrentTimeStampUtc()
+{
+	thread_db* tdbb = JRD_get_thread_data();
+
+	if (tdbb && (tdbb->getType() == ThreadData::tddDBB) && tdbb->getRequest())
+	{
+		fb_assert(!tdbb->getRequest()->req_timestamp_utc.isEmpty());
+		return tdbb->getRequest()->req_timestamp_utc.value();
+	}
+
+	return TimeZoneUtil::timeStampTzToTimeStamp(TimeZoneUtil::getCurrentTimeStampUtc(), TimeZoneUtil::UTC_ZONE);
 }
 
 

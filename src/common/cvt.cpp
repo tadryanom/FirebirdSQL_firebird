@@ -971,7 +971,7 @@ void CVT_string_to_datetime(const dsc* desc,
 			ISC_TIME_TZ timeTz;
 			timeTz.time_time = date->timestamp_time;
 			timeTz.time_zone = zone;
-			date->timestamp_time = TimeZoneUtil::timeTzToTime(timeTz, sessionTimeZone);
+			date->timestamp_time = TimeZoneUtil::timeTzToTime(timeTz, sessionTimeZone, cb);
 		}
 		else if (expect_type == expect_timestamp)
 			*(ISC_TIMESTAMP*) date = TimeZoneUtil::timeStampTzToTimeStamp(*date, sessionTimeZone);
@@ -1548,23 +1548,17 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 		case dtype_sql_time:
 			((GDS_TIMESTAMP*) (to->dsc_address))->timestamp_date = 0;
 			((GDS_TIMESTAMP*) (to->dsc_address))->timestamp_time = *(GDS_TIME*) from->dsc_address;
-			((GDS_TIMESTAMP*) (to->dsc_address))->timestamp_date = cb->getCurDate();
+			((GDS_TIMESTAMP*) (to->dsc_address))->timestamp_date = cb->getLocalDate();
 			return;
 
 		case dtype_sql_time_tz:
-		{
-			ISC_TIMESTAMP_TZ tsTz;
-			tsTz.timestamp_date = cb->getCurDate();	//// TODO: correct?
-			tsTz.timestamp_time = ((ISC_TIME_TZ*) from->dsc_address)->time_time;
-			tsTz.timestamp_zone = ((ISC_TIME_TZ*) from->dsc_address)->time_zone;
 			*(ISC_TIMESTAMP*) to->dsc_address =
-				TimeZoneUtil::timeStampTzToTimeStamp(tsTz, cb->getSessionTimeZone());
+				TimeZoneUtil::cvtTimeTzToTimeStamp(*(ISC_TIME_TZ*) from->dsc_address, cb);
 			return;
-		}
 
 		case dtype_timestamp_tz:
 			*(ISC_TIMESTAMP*) to->dsc_address =
-				TimeZoneUtil::timeStampTzToTimeStamp(*(ISC_TIMESTAMP_TZ*) from->dsc_address, cb->getSessionTimeZone());
+				TimeZoneUtil::cvtTimeStampTzToTimeStamp(*(ISC_TIMESTAMP_TZ*) from->dsc_address, cb);
 			return;
 
 		default:
@@ -1599,32 +1593,23 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 			return;
 
 		case dtype_sql_time:
-			// SQL: source => TIMESTAMP WITHOUT TIME ZONE => TIMESTAMP WITH TIME ZONE
-			((ISC_TIMESTAMP_TZ*) to->dsc_address)->timestamp_date = cb->getCurDate();
-			((ISC_TIMESTAMP_TZ*) to->dsc_address)->timestamp_time = ((ISC_TIME_TZ*) from->dsc_address)->time_time;
-			((ISC_TIMESTAMP_TZ*) to->dsc_address)->timestamp_zone = cb->getSessionTimeZone();
-			TimeZoneUtil::localTimeStampToUtc(*(ISC_TIMESTAMP_TZ*) to->dsc_address);
+			*(ISC_TIMESTAMP_TZ*) to->dsc_address =
+				TimeZoneUtil::cvtTimeToTimeStampTz(*(ISC_TIME*) from->dsc_address, cb);
 			return;
 
 		case dtype_sql_time_tz:
-			// SQL: Copy date fields from CURRENT_DATE and time and time zone fields from the source.
-			//// FIXME:
-			((ISC_TIMESTAMP_TZ*) to->dsc_address)->timestamp_date = cb->getCurDate();
-			((ISC_TIMESTAMP_TZ*) to->dsc_address)->timestamp_time = ((ISC_TIME_TZ*) from->dsc_address)->time_time;
-			((ISC_TIMESTAMP_TZ*) to->dsc_address)->timestamp_zone = ((ISC_TIME_TZ*) from->dsc_address)->time_zone;
+			*((ISC_TIMESTAMP_TZ*) to->dsc_address) =
+				TimeZoneUtil::cvtTimeTzToTimeStampTz(*(ISC_TIME_TZ*) from->dsc_address, cb);
 			return;
 
 		case dtype_sql_date:
-			((ISC_TIMESTAMP_TZ*) to->dsc_address)->timestamp_date = *(GDS_DATE*) from->dsc_address;
-			((ISC_TIMESTAMP_TZ*) to->dsc_address)->timestamp_time = 0;
-			((ISC_TIMESTAMP_TZ*) to->dsc_address)->timestamp_zone = cb->getSessionTimeZone();
-			TimeZoneUtil::localTimeStampToUtc(*(ISC_TIMESTAMP_TZ*) to->dsc_address);
+			*(ISC_TIMESTAMP_TZ*) to->dsc_address =
+				TimeZoneUtil::cvtDateToTimeStampTz(*(GDS_DATE*) from->dsc_address, cb);
 			return;
 
 		case dtype_timestamp:
-			*(ISC_TIMESTAMP*) to->dsc_address = *(ISC_TIMESTAMP*) from->dsc_address;
-			((ISC_TIMESTAMP_TZ*) to->dsc_address)->timestamp_zone = cb->getSessionTimeZone();
-			TimeZoneUtil::localTimeStampToUtc(*((ISC_TIMESTAMP_TZ*) to->dsc_address));
+			*(ISC_TIMESTAMP_TZ*) to->dsc_address =
+				TimeZoneUtil::cvtTimeStampToTimeStampTz(*(ISC_TIMESTAMP*) from->dsc_address, cb);
 			return;
 
 		default:
@@ -1663,8 +1648,8 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 			return;
 
 		case dtype_timestamp_tz:
-			*(GDS_DATE*) to->dsc_address = TimeZoneUtil::timeStampTzToTimeStamp(
-				*(ISC_TIMESTAMP_TZ*) from->dsc_address, cb->getSessionTimeZone()).timestamp_date;
+			*(GDS_DATE*) to->dsc_address =
+				TimeZoneUtil::cvtTimeStampTzToTimeStamp(*(ISC_TIMESTAMP_TZ*) from->dsc_address, cb).timestamp_date;
 			return;
 
 		default:
@@ -1701,8 +1686,7 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 			return;
 
 		case dtype_sql_time_tz:
-			*(ISC_TIME*) to->dsc_address =
-				TimeZoneUtil::timeTzToTime(*(ISC_TIME_TZ*) from->dsc_address, cb->getSessionTimeZone());
+			*(ISC_TIME*) to->dsc_address = TimeZoneUtil::cvtTimeTzToTime(*(ISC_TIME_TZ*) from->dsc_address, cb);
 			return;
 
 		case dtype_timestamp:
@@ -1710,8 +1694,8 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 			return;
 
 		case dtype_timestamp_tz:
-			*(GDS_TIME*) to->dsc_address = TimeZoneUtil::timeStampTzToTimeStamp(
-				*(ISC_TIMESTAMP_TZ*) from->dsc_address, cb->getSessionTimeZone()).timestamp_time;
+			*(GDS_TIME*) to->dsc_address =
+				TimeZoneUtil::cvtTimeStampTzToTimeStamp(*(ISC_TIMESTAMP_TZ*) from->dsc_address, cb).timestamp_time;
 			return;
 
 		default:
@@ -1748,21 +1732,17 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 			return;
 
 		case dtype_sql_time:
-			*(ISC_TIME*) to->dsc_address = *(ISC_TIME*) from->dsc_address;
-			((ISC_TIME_TZ*) to->dsc_address)->time_zone = cb->getSessionTimeZone();
-			TimeZoneUtil::localTimeToUtc(*(ISC_TIME_TZ*) to->dsc_address);
+			*(ISC_TIME_TZ*) to->dsc_address = TimeZoneUtil::cvtTimeToTimeTz(*(ISC_TIME*) from->dsc_address, cb);
 			return;
 
 		case dtype_timestamp:
-			((ISC_TIME_TZ*) to->dsc_address)->time_time = ((GDS_TIMESTAMP*) from->dsc_address)->timestamp_time;
-			((ISC_TIME_TZ*) to->dsc_address)->time_zone = cb->getSessionTimeZone();
-			TimeZoneUtil::localTimeToUtc(*(ISC_TIME_TZ*) to->dsc_address);
+			*(ISC_TIME_TZ*) to->dsc_address =
+				TimeZoneUtil::cvtTimeStampToTimeTz(*(ISC_TIMESTAMP*) from->dsc_address, cb);
 			return;
 
 		case dtype_timestamp_tz:
-			// SQL: Copy time and time zone fields from the source.
-			((ISC_TIME_TZ*) to->dsc_address)->time_time = ((ISC_TIMESTAMP_TZ*) from->dsc_address)->timestamp_time;
-			((ISC_TIME_TZ*) to->dsc_address)->time_zone = ((ISC_TIMESTAMP_TZ*) from->dsc_address)->timestamp_zone;
+			*(ISC_TIME_TZ*) to->dsc_address =
+				TimeZoneUtil::cvtTimeStampTzToTimeTz(*(ISC_TIMESTAMP_TZ*) from->dsc_address);
 			return;
 
 		default:
@@ -2237,7 +2217,7 @@ static void datetime_to_text(const dsc* from, dsc* to, Callbacks* cb)
 		break;
 
 	case dtype_sql_time_tz:
-		TimeZoneUtil::decodeTime(*(ISC_TIME_TZ*) from->dsc_address, &times, &fractions);
+		TimeZoneUtil::decodeTime(*(ISC_TIME_TZ*) from->dsc_address, cb, &times, &fractions);
 		timezone = ((ISC_TIME_TZ*) from->dsc_address)->time_zone;
 		break;
 
@@ -3393,10 +3373,11 @@ namespace
 		virtual void validateData(Jrd::CharSet* toCharset, SLONG length, const UCHAR* q);
 		virtual void validateLength(Jrd::CharSet* toCharset, SLONG toLength, const UCHAR* start,
 			const USHORT to_size);
-		virtual SLONG getCurDate();
+		virtual SLONG getLocalDate();
+		virtual ISC_TIMESTAMP getCurrentTimeStampUtc();
 		virtual USHORT getSessionTimeZone();
 		virtual void isVersion4(bool& v4);
-	};
+	} commonCallbacks(status_exception::raise);
 
 	bool CommonCallbacks::transliterate(const dsc*, dsc* to, CHARSET_ID& charset2)
 	{
@@ -3422,9 +3403,14 @@ namespace
 		return INTL_TTYPE(d);
 	}
 
-	SLONG CommonCallbacks::getCurDate()
+	SLONG CommonCallbacks::getLocalDate()
 	{
 		return TimeStamp::getCurrentTimeStamp().value().timestamp_date;
+	}
+
+	ISC_TIMESTAMP CommonCallbacks::getCurrentTimeStampUtc()
+	{
+		return TimeZoneUtil::timeStampTzToTimeStamp(TimeZoneUtil::getCurrentTimeStampUtc(), TimeZoneUtil::UTC_ZONE);
 	}
 
 	USHORT CommonCallbacks::getSessionTimeZone()
@@ -3437,6 +3423,9 @@ namespace
 	}
 }	// namespace
 
+namespace Firebird {
+	Callbacks* CVT_commonCallbacks  = &commonCallbacks;
+}
 
 USHORT CVT_get_string_ptr(const dsc* desc, USHORT* ttype, UCHAR** address,
 						  vary* temp, USHORT length, DecimalStatus decSt, ErrorFunction err)

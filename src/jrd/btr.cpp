@@ -570,8 +570,10 @@ DSC* BTR_eval_expression(thread_db* tdbb, index_desc* idx, Record* record, bool&
 	{
 		Jrd::ContextPoolHolder context(tdbb, expr_request->req_pool);
 
-		expr_request->req_timestamp = org_request ?
-			org_request->req_timestamp : TimeStamp::getCurrentTimeStamp();
+		if (org_request)
+			expr_request->req_timestamp_utc = org_request->req_timestamp_utc;
+		else
+			TimeZoneUtil::validateTimeStampUtc(expr_request->req_timestamp_utc);
 
 		if (!(result = EVL_expr(tdbb, expr_request, idx->idx_expression)))
 			result = &idx->idx_expression_desc;
@@ -585,7 +587,7 @@ DSC* BTR_eval_expression(thread_db* tdbb, index_desc* idx, Record* record, bool&
 
 		expr_request->req_caller = NULL;
 		expr_request->req_flags &= ~req_in_use;
-		expr_request->req_timestamp.invalidate();
+		expr_request->req_timestamp_utc.invalidate();
 
 		throw;
 	}
@@ -595,7 +597,7 @@ DSC* BTR_eval_expression(thread_db* tdbb, index_desc* idx, Record* record, bool&
 
 	expr_request->req_caller = NULL;
 	expr_request->req_flags &= ~req_in_use;
-	expr_request->req_timestamp.invalidate();
+	expr_request->req_timestamp_utc.invalidate();
 
 	return result;
 }

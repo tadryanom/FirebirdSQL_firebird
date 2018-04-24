@@ -60,13 +60,16 @@ public:
 	virtual void validateData(Jrd::CharSet* toCharset, SLONG length, const UCHAR* q) = 0;
 	virtual void validateLength(Jrd::CharSet* toCharset, SLONG toLength, const UCHAR* start,
 		const USHORT to_size) = 0;
-	virtual SLONG getCurDate() = 0;
+	virtual SLONG getLocalDate() = 0;
+	virtual ISC_TIMESTAMP getCurrentTimeStampUtc() = 0;
 	virtual USHORT getSessionTimeZone() = 0;
 	virtual void isVersion4(bool& v4) = 0;
 
 public:
 	const ErrorFunction err;
 };
+
+extern Callbacks* CVT_commonCallbacks;
 
 enum EXPECT_DATETIME
 {

@@ -1035,11 +1035,11 @@ void Monitoring::putRequest(SnapshotData::DumpRecord& record, const jrd_req* req
 		const bool is_stalled = (request->req_flags & req_stall);
 		record.storeInteger(f_mon_stmt_state, is_stalled ? mon_state_stalled : mon_state_active);
 		record.storeInteger(f_mon_stmt_tra_id, request->req_transaction->tra_number);
-		record.storeTimestamp(f_mon_stmt_timestamp, request->req_timestamp);
+		record.storeTimestamp(f_mon_stmt_timestamp, request->getLocalTimeStamp().value());
 
 		ISC_TIMESTAMP ts;
 		if (request->req_timer &&
-			request->req_timer->getExpireTimestamp(request->req_timestamp.value(), ts))
+			request->req_timer->getExpireTimestamp(request->getLocalTimeStamp().value(), ts))
 		{
 			record.storeTimestamp(f_mon_stmt_timer, ts);
 		}
@@ -1115,7 +1115,7 @@ void Monitoring::putCall(SnapshotData::DumpRecord& record, const jrd_req* reques
 	}
 
 	// timestamp
-	record.storeTimestamp(f_mon_call_timestamp, request->req_timestamp);
+	record.storeTimestamp(f_mon_call_timestamp, request->getLocalTimeStamp().value());
 	// source line/column
 	if (request->req_src_line)
 	{

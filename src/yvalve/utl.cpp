@@ -674,7 +674,7 @@ void UtilInterface::decodeTimeTz(CheckStatusWrapper* status, const ISC_TIME_TZ* 
 	{
 		tm times;
 		int intFractions;
-		TimeZoneUtil::decodeTime(*timeTz, &times, &intFractions);
+		TimeZoneUtil::decodeTime(*timeTz, CVT_commonCallbacks, &times, &intFractions);
 
 		if (hours)
 			*hours = times.tm_hour;
@@ -704,7 +704,7 @@ void UtilInterface::encodeTimeTz(CheckStatusWrapper* status, ISC_TIME_TZ* timeTz
 	{
 		timeTz->time_time = encodeTime(hours, minutes, seconds, fractions);
 		timeTz->time_zone = TimeZoneUtil::parse(timeZone, strlen(timeZone));
-		TimeZoneUtil::localTimeToUtc(*timeTz);
+		TimeZoneUtil::localTimeToUtc(*timeTz, CVT_commonCallbacks);
 	}
 	catch (const Exception& ex)
 	{
