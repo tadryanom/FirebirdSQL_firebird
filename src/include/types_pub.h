@@ -150,7 +150,7 @@ typedef unsigned int	ISC_TIME;
 
 typedef struct
 {
-	ISC_TIME time_time;
+	ISC_TIME utc_time;
 	ISC_USHORT time_zone;
 } ISC_TIME_TZ;
 
@@ -162,9 +162,8 @@ typedef struct
 
 typedef struct
 {
-	ISC_DATE timestamp_date;
-	ISC_TIME timestamp_time;
-	ISC_USHORT timestamp_zone;
+	ISC_TIMESTAMP utc_timestamp;
+	ISC_USHORT time_zone;
 } ISC_TIMESTAMP_TZ;
 
 #define ISC_TIMESTAMP_DEFINED

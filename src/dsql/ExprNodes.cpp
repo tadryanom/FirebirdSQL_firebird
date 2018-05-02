@@ -2718,7 +2718,7 @@ dsc* ArithmeticNode::addSqlTime(thread_db* tdbb, const dsc* desc, impure_value* 
 
 	fb_assert(d2 >= 0 && d2 < ISC_TICKS_PER_DAY);
 
-	value->vlu_misc.vlu_sql_time_tz.time_time = d2;
+	value->vlu_misc.vlu_sql_time_tz.utc_time = d2;
 
 	result->dsc_dtype = op1_tz.specified || op2_tz.specified ? dtype_sql_time_tz : dtype_sql_time;
 	result->dsc_length = type_lengths[result->dsc_dtype];
@@ -2754,12 +2754,12 @@ dsc* ArithmeticNode::addTimeStamp(thread_db* tdbb, const dsc* desc, impure_value
 	if (op1_desc->dsc_dtype == dtype_sql_time_tz)
 		op1_tz = ((ISC_TIME_TZ*) op1_desc->dsc_address)->time_zone;
 	else if (op1_desc->dsc_dtype == dtype_timestamp_tz)
-		op1_tz = ((ISC_TIMESTAMP_TZ*) op1_desc->dsc_address)->timestamp_zone;
+		op1_tz = ((ISC_TIMESTAMP_TZ*) op1_desc->dsc_address)->time_zone;
 
 	if (op2_desc->dsc_dtype == dtype_sql_time_tz)
 		op2_tz = ((ISC_TIME_TZ*) op2_desc->dsc_address)->time_zone;
 	else if (op2_desc->dsc_dtype == dtype_timestamp_tz)
-		op2_tz = ((ISC_TIMESTAMP_TZ*) op2_desc->dsc_address)->timestamp_zone;
+		op2_tz = ((ISC_TIMESTAMP_TZ*) op2_desc->dsc_address)->time_zone;
 
 	dsc op1_tz_desc, op2_tz_desc;
 	ISC_TIMESTAMP_TZ op1_timestamp_tz, op2_timestamp_tz;
@@ -2800,8 +2800,8 @@ dsc* ArithmeticNode::addTimeStamp(thread_db* tdbb, const dsc* desc, impure_value
 		// DATE + TIME
 		if (op2_desc->isTime() && blrOp == blr_add)
 		{
-			value->vlu_misc.vlu_timestamp_tz.timestamp_date = *(GDS_DATE*) op1_desc->dsc_address;
-			value->vlu_misc.vlu_timestamp_tz.timestamp_time = *(GDS_TIME*) op2_desc->dsc_address;
+			value->vlu_misc.vlu_timestamp_tz.utc_timestamp.timestamp_date = *(GDS_DATE*) op1_desc->dsc_address;
+			value->vlu_misc.vlu_timestamp_tz.utc_timestamp.timestamp_time = *(GDS_TIME*) op2_desc->dsc_address;
 		}
 		else
 			ERR_post(Arg::Gds(isc_expression_eval_err) << Arg::Gds(isc_onlycan_add_timetodate));
@@ -2811,8 +2811,8 @@ dsc* ArithmeticNode::addTimeStamp(thread_db* tdbb, const dsc* desc, impure_value
 		// TIME + DATE
 		if (op1_desc->isTime() && blrOp == blr_add)
 		{
-			value->vlu_misc.vlu_timestamp_tz.timestamp_time = *(GDS_TIME*) op1_desc->dsc_address;
-			value->vlu_misc.vlu_timestamp_tz.timestamp_date = *(GDS_DATE*) op2_desc->dsc_address;
+			value->vlu_misc.vlu_timestamp_tz.utc_timestamp.timestamp_time = *(GDS_TIME*) op1_desc->dsc_address;
+			value->vlu_misc.vlu_timestamp_tz.utc_timestamp.timestamp_date = *(GDS_DATE*) op2_desc->dsc_address;
 		}
 		else
 			ERR_post(Arg::Gds(isc_expression_eval_err) << Arg::Gds(isc_onlycan_add_datetotime));
@@ -2948,24 +2948,24 @@ dsc* ArithmeticNode::addTimeStamp(thread_db* tdbb, const dsc* desc, impure_value
 
 		// Convert the count of microseconds back to a date / time format
 
-		value->vlu_misc.vlu_timestamp_tz.timestamp_date = d2 / (ISC_TICKS_PER_DAY);
-		value->vlu_misc.vlu_timestamp_tz.timestamp_time = (d2 % ISC_TICKS_PER_DAY);
+		value->vlu_misc.vlu_timestamp_tz.utc_timestamp.timestamp_date = d2 / (ISC_TICKS_PER_DAY);
+		value->vlu_misc.vlu_timestamp_tz.utc_timestamp.timestamp_time = (d2 % ISC_TICKS_PER_DAY);
 
 		// Make sure the TIME portion is non-negative
 
-		if ((SLONG) value->vlu_misc.vlu_timestamp_tz.timestamp_time < 0)
+		if ((SLONG) value->vlu_misc.vlu_timestamp_tz.utc_timestamp.timestamp_time < 0)
 		{
-			value->vlu_misc.vlu_timestamp_tz.timestamp_time =
-				((SLONG) value->vlu_misc.vlu_timestamp_tz.timestamp_time) + ISC_TICKS_PER_DAY;
-			value->vlu_misc.vlu_timestamp_tz.timestamp_date -= 1;
+			value->vlu_misc.vlu_timestamp_tz.utc_timestamp.timestamp_time =
+				((SLONG) value->vlu_misc.vlu_timestamp_tz.utc_timestamp.timestamp_time) + ISC_TICKS_PER_DAY;
+			--value->vlu_misc.vlu_timestamp_tz.utc_timestamp.timestamp_date;
 		}
 
 		if (!TimeStamp::isValidTimeStamp(*(ISC_TIMESTAMP*) &value->vlu_misc.vlu_timestamp_tz))
 			ERR_post(Arg::Gds(isc_datetime_range_exceeded));
 	}
 
-	fb_assert(value->vlu_misc.vlu_timestamp_tz.timestamp_time >= 0 &&
-		value->vlu_misc.vlu_timestamp_tz.timestamp_time < ISC_TICKS_PER_DAY);
+	fb_assert(value->vlu_misc.vlu_timestamp_tz.utc_timestamp.timestamp_time >= 0 &&
+		value->vlu_misc.vlu_timestamp_tz.utc_timestamp.timestamp_time < ISC_TICKS_PER_DAY);
 
 	fb_assert(!(op1_tz.specified && op2_tz.specified));
 
@@ -2976,9 +2976,9 @@ dsc* ArithmeticNode::addTimeStamp(thread_db* tdbb, const dsc* desc, impure_value
 	result->dsc_address = (UCHAR*) &value->vlu_misc.vlu_timestamp_tz;
 
 	if (op1_tz.specified)
-		value->vlu_misc.vlu_timestamp_tz.timestamp_zone = op1_tz.value;
+		value->vlu_misc.vlu_timestamp_tz.time_zone = op1_tz.value;
 	else if (op2_tz.specified)
-		value->vlu_misc.vlu_timestamp_tz.timestamp_zone = op2_tz.value;
+		value->vlu_misc.vlu_timestamp_tz.time_zone = op2_tz.value;
 
 	return result;
 }
@@ -3195,7 +3195,7 @@ dsc* AtNode::execute(thread_db* tdbb, jrd_req* request) const
 	{
 		impure->vlu_desc.makeTimestampTz(&impure->vlu_misc.vlu_timestamp_tz);
 		MOV_move(tdbb, dateTimeDesc, &impure->vlu_desc);
-		impure->vlu_misc.vlu_timestamp_tz.timestamp_zone = zone;
+		impure->vlu_misc.vlu_timestamp_tz.time_zone = zone;
 	}
 	else if (dateTimeDesc->isTime())
 	{
@@ -4119,9 +4119,8 @@ dsc* CurrentDateNode::execute(thread_db* tdbb, jrd_req* request) const
 	fb_assert(!request->req_timestamp_utc.isEmpty());
 
 	ISC_TIMESTAMP_TZ timeStampTz;
-	timeStampTz.timestamp_date = request->req_timestamp_utc.value().timestamp_date;
-	timeStampTz.timestamp_time = request->req_timestamp_utc.value().timestamp_time;
-	timeStampTz.timestamp_zone = TimeZoneUtil::UTC_ZONE;
+	timeStampTz.utc_timestamp = request->req_timestamp_utc.value();
+	timeStampTz.time_zone = TimeZoneUtil::UTC_ZONE;
 
 	impure->vlu_misc.vlu_sql_date = TimeZoneUtil::timeStampTzToTimeStamp(
 		timeStampTz, request->req_attachment->att_current_timezone).timestamp_date;
@@ -4240,7 +4239,7 @@ dsc* CurrentTimeNode::execute(thread_db* tdbb, jrd_req* request) const
 	impure->vlu_desc.dsc_length = type_lengths[dtype_sql_time_tz];
 	impure->vlu_desc.dsc_address = (UCHAR*) &impure->vlu_misc.vlu_sql_time_tz;
 
-	impure->vlu_misc.vlu_sql_time_tz.time_time = time;
+	impure->vlu_misc.vlu_sql_time_tz.utc_time = time;
 	impure->vlu_misc.vlu_sql_time_tz.time_zone = TimeZoneUtil::getSystemTimeZone();
 
 	return &impure->vlu_desc;
@@ -4355,9 +4354,8 @@ dsc* CurrentTimeStampNode::execute(thread_db* tdbb, jrd_req* request) const
 	impure->vlu_desc.dsc_dtype = dtype_timestamp_tz;
 	impure->vlu_desc.dsc_length = type_lengths[dtype_timestamp_tz];
 
-	impure->vlu_misc.vlu_timestamp_tz.timestamp_date = encTimes.timestamp_date;
-	impure->vlu_misc.vlu_timestamp_tz.timestamp_time = encTimes.timestamp_time;
-	impure->vlu_misc.vlu_timestamp_tz.timestamp_zone = tdbb->getAttachment()->att_current_timezone;
+	impure->vlu_misc.vlu_timestamp_tz.utc_timestamp = encTimes;
+	impure->vlu_misc.vlu_timestamp_tz.time_zone = tdbb->getAttachment()->att_current_timezone;
 
 	return &impure->vlu_desc;
 }
@@ -5449,9 +5447,9 @@ dsc* ExtractNode::execute(thread_db* tdbb, jrd_req* request) const
 
 				case blr_extract_timezone_hour:
 				case blr_extract_timezone_minute:
-					timeStampTz.timestamp_date = EngineCallbacks::instance->getLocalDate();
-					timeStampTz.timestamp_time = ((ISC_TIME_TZ*) value->dsc_address)->time_time;
-					timeStampTz.timestamp_zone = ((ISC_TIME_TZ*) value->dsc_address)->time_zone;
+					timeStampTz.utc_timestamp.timestamp_date = EngineCallbacks::instance->getLocalDate();
+					timeStampTz.utc_timestamp.timestamp_time = ((ISC_TIME_TZ*) value->dsc_address)->utc_time;
+					timeStampTz.time_zone = ((ISC_TIME_TZ*) value->dsc_address)->time_zone;
 					break;
 
 				default:
@@ -7923,9 +7921,8 @@ dsc* LocalTimeNode::execute(thread_db* tdbb, jrd_req* request) const
 	fb_assert(!request->req_timestamp_utc.isEmpty());
 
 	ISC_TIMESTAMP_TZ timeStampTz;
-	timeStampTz.timestamp_date = request->req_timestamp_utc.value().timestamp_date;
-	timeStampTz.timestamp_time = request->req_timestamp_utc.value().timestamp_time;
-	timeStampTz.timestamp_zone = TimeZoneUtil::UTC_ZONE;
+	timeStampTz.utc_timestamp = request->req_timestamp_utc.value();
+	timeStampTz.time_zone = TimeZoneUtil::UTC_ZONE;
 
 	impure->vlu_misc.vlu_sql_time = TimeZoneUtil::timeStampTzToTimeStamp(
 		timeStampTz, request->req_attachment->att_current_timezone).timestamp_time;
@@ -13430,8 +13427,8 @@ static SINT64 getTimeStampToIscTicks(thread_db* tdbb, const dsc* d)
 
 	SINT64 delta = 0;
 
-	return ((SINT64) result_timestamp.timestamp_date) * ISC_TICKS_PER_DAY +
-		(SINT64) result_timestamp.timestamp_time - delta;
+	return ((SINT64) result_timestamp.utc_timestamp.timestamp_date) * ISC_TICKS_PER_DAY +
+		(SINT64) result_timestamp.utc_timestamp.timestamp_time - delta;
 }
 
 // One of d1, d2 is time, the other is date

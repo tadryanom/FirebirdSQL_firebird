@@ -702,7 +702,7 @@ void UtilInterface::encodeTimeTz(CheckStatusWrapper* status, ISC_TIME_TZ* timeTz
 {
 	try
 	{
-		timeTz->time_time = encodeTime(hours, minutes, seconds, fractions);
+		timeTz->utc_time = encodeTime(hours, minutes, seconds, fractions);
 		timeTz->time_zone = TimeZoneUtil::parse(timeZone, strlen(timeZone));
 		TimeZoneUtil::localTimeToUtc(*timeTz, CVT_commonCallbacks);
 	}
@@ -744,7 +744,7 @@ void UtilInterface::decodeTimeStampTz(CheckStatusWrapper* status, const ISC_TIME
 			*fractions = (unsigned) intFractions;
 
 		if (timeZoneBuffer)
-			TimeZoneUtil::format(timeZoneBuffer, timeZoneBufferLength, timeStampTz->timestamp_zone);
+			TimeZoneUtil::format(timeZoneBuffer, timeZoneBufferLength, timeStampTz->time_zone);
 	}
 	catch (const Exception& ex)
 	{
@@ -758,9 +758,9 @@ void UtilInterface::encodeTimeStampTz(CheckStatusWrapper* status, ISC_TIMESTAMP_
 {
 	try
 	{
-		timeStampTz->timestamp_date = encodeDate(year, month, day);
-		timeStampTz->timestamp_time = encodeTime(hours, minutes, seconds, fractions);
-		timeStampTz->timestamp_zone = TimeZoneUtil::parse(timeZone, strlen(timeZone));
+		timeStampTz->utc_timestamp.timestamp_date = encodeDate(year, month, day);
+		timeStampTz->utc_timestamp.timestamp_time = encodeTime(hours, minutes, seconds, fractions);
+		timeStampTz->time_zone = TimeZoneUtil::parse(timeZone, strlen(timeZone));
 		TimeZoneUtil::localTimeStampToUtc(*timeStampTz);
 	}
 	catch (const Exception& ex)

@@ -674,7 +674,7 @@ typedef ULONG ISC_TIME;
 
 struct ISC_TIME_TZ
 {
-	ISC_TIME time_time;
+	ISC_TIME utc_time;
 	ISC_USHORT time_zone;
 };
 
@@ -686,9 +686,8 @@ struct ISC_TIMESTAMP
 
 struct ISC_TIMESTAMP_TZ
 {
-	ISC_DATE timestamp_date;
-	ISC_TIME timestamp_time;
-	ISC_USHORT timestamp_zone;
+	ISC_TIMESTAMP utc_timestamp;
+	ISC_USHORT time_zone;
 };
 
 #define ISC_TIMESTAMP_DEFINED

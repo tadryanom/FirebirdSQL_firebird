@@ -211,31 +211,24 @@ ValueExprNode* MAKE_constant(const char* str, dsql_constant_type numeric_flag)
 			switch (numeric_flag)
 			{
 				case CONSTANT_DATE:
-					*(ISC_DATE*) literal->litDesc.dsc_address = ts.timestamp_date;
+					*(ISC_DATE*) literal->litDesc.dsc_address = ts.utc_timestamp.timestamp_date;
 					break;
 
 				case CONSTANT_TIME:
 					if (tz)
 					{
-						((ISC_TIME_TZ*) literal->litDesc.dsc_address)->time_time = ts.timestamp_time;
-						((ISC_TIME_TZ*) literal->litDesc.dsc_address)->time_zone = ts.timestamp_zone;
+						((ISC_TIME_TZ*) literal->litDesc.dsc_address)->utc_time = ts.utc_timestamp.timestamp_time;
+						((ISC_TIME_TZ*) literal->litDesc.dsc_address)->time_zone = ts.time_zone;
 					}
 					else
-						*(ISC_TIME*) literal->litDesc.dsc_address = ts.timestamp_time;
+						*(ISC_TIME*) literal->litDesc.dsc_address = ts.utc_timestamp.timestamp_time;
 					break;
 
 				case CONSTANT_TIMESTAMP:
 					if (tz)
-					{
-						((ISC_TIMESTAMP_TZ*) literal->litDesc.dsc_address)->timestamp_date = ts.timestamp_date;
-						((ISC_TIMESTAMP_TZ*) literal->litDesc.dsc_address)->timestamp_time = ts.timestamp_time;
-						((ISC_TIMESTAMP_TZ*) literal->litDesc.dsc_address)->timestamp_zone = ts.timestamp_zone;
-					}
+						*(ISC_TIMESTAMP_TZ*) literal->litDesc.dsc_address = ts;
 					else
-					{
-						((ISC_TIMESTAMP*) literal->litDesc.dsc_address)->timestamp_date = ts.timestamp_date;
-						((ISC_TIMESTAMP*) literal->litDesc.dsc_address)->timestamp_time = ts.timestamp_time;
-					}
+						*(ISC_TIMESTAMP*) literal->litDesc.dsc_address = ts.utc_timestamp;
 					break;
 			}
 

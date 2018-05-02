@@ -653,7 +653,7 @@ void CVT_string_to_datetime(const dsc* desc,
 					*(ISC_TIMESTAMP*) date = Firebird::TimeStamp::getCurrentTimeStamp().value();
 
 					if (expect_type == expect_sql_time_tz || expect_type == expect_timestamp_tz)
-						date->timestamp_zone = cb->getSessionTimeZone();
+						date->time_zone = cb->getSessionTimeZone();
 
 					if (strcmp(temp, NOW) == 0)
 					{
@@ -668,7 +668,7 @@ void CVT_string_to_datetime(const dsc* desc,
 						return;
 					}
 
-					date->timestamp_time = 0;
+					date->utc_timestamp.timestamp_time = 0;
 
 					if (expect_type == expect_sql_time_tz || expect_type == expect_timestamp_tz)
 						TimeZoneUtil::localTimeStampToUtc(*date);
@@ -678,13 +678,13 @@ void CVT_string_to_datetime(const dsc* desc,
 
 					if (strcmp(temp, TOMORROW) == 0)
 					{
-						date->timestamp_date++;
+						date->utc_timestamp.timestamp_date++;
 						return;
 					}
 
 					if (strcmp(temp, YESTERDAY) == 0)
 					{
-						date->timestamp_date--;
+						date->utc_timestamp.timestamp_date--;
 						return;
 					}
 
@@ -958,8 +958,8 @@ void CVT_string_to_datetime(const dsc* desc,
 	while (description[6]++ < -ISC_TIME_SECONDS_PRECISION_SCALE)
 		components[6] *= 10;
 
-	date->timestamp_time += components[6];
-	date->timestamp_zone = zone;
+	date->utc_timestamp.timestamp_time += components[6];
+	date->time_zone = zone;
 
 	if (expect_type == expect_sql_time_tz || expect_type == expect_timestamp_tz || zone != sessionTimeZone)
 		TimeZoneUtil::localTimeStampToUtc(*date);
@@ -969,9 +969,9 @@ void CVT_string_to_datetime(const dsc* desc,
 		if (expect_type == expect_sql_time)
 		{
 			ISC_TIME_TZ timeTz;
-			timeTz.time_time = date->timestamp_time;
+			timeTz.utc_time = date->utc_timestamp.timestamp_time;
 			timeTz.time_zone = zone;
-			date->timestamp_time = TimeZoneUtil::timeTzToTime(timeTz, sessionTimeZone, cb);
+			date->utc_timestamp.timestamp_time = TimeZoneUtil::timeTzToTime(timeTz, sessionTimeZone, cb);
 		}
 		else if (expect_type == expect_timestamp)
 			*(ISC_TIMESTAMP*) date = TimeZoneUtil::timeStampTzToTimeStamp(*date, sessionTimeZone);
@@ -1639,7 +1639,7 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 			{
 				ISC_TIMESTAMP_TZ date;
 				CVT_string_to_datetime(from, &date, NULL, expect_sql_date, true, cb);
-				*((GDS_DATE *) to->dsc_address) = date.timestamp_date;
+				*((GDS_DATE*) to->dsc_address) = date.utc_timestamp.timestamp_date;
 			}
 			return;
 
@@ -1681,7 +1681,7 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 			{
 				ISC_TIMESTAMP_TZ date;
 				CVT_string_to_datetime(from, &date, NULL, expect_sql_time, true, cb);
-				*((GDS_TIME *) to->dsc_address) = date.timestamp_time;
+				*((GDS_TIME *) to->dsc_address) = date.utc_timestamp.timestamp_time;
 			}
 			return;
 
@@ -1726,8 +1726,8 @@ void CVT_move_common(const dsc* from, dsc* to, DecimalStatus decSt, Callbacks* c
 			{
 				ISC_TIMESTAMP_TZ date;
 				CVT_string_to_datetime(from, &date, NULL, expect_sql_time_tz, true, cb);
-				((ISC_TIME_TZ*) to->dsc_address)->time_time = date.timestamp_time;
-				((ISC_TIME_TZ*) to->dsc_address)->time_zone = date.timestamp_zone;
+				((ISC_TIME_TZ*) to->dsc_address)->utc_time = date.utc_timestamp.timestamp_time;
+				((ISC_TIME_TZ*) to->dsc_address)->time_zone = date.time_zone;
 			}
 			return;
 
@@ -2233,7 +2233,7 @@ static void datetime_to_text(const dsc* from, dsc* to, Callbacks* cb)
 	case dtype_timestamp_tz:
 		cb->isVersion4(version4); // Used in the conversion to text some lines below.
 		TimeZoneUtil::decodeTimeStamp(*(ISC_TIMESTAMP_TZ*) from->dsc_address, &times, &fractions);
-		timezone = ((ISC_TIMESTAMP_TZ*) from->dsc_address)->timestamp_zone;
+		timezone = ((ISC_TIMESTAMP_TZ*) from->dsc_address)->time_zone;
 		break;
 
 	default:

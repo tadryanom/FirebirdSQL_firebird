@@ -2475,10 +2475,8 @@ dsc* evlFirstLastDay(thread_db* tdbb, const SysFunction* function, const NestVal
 			break;
 
 		case dtype_timestamp_tz:
-			impure->vlu_misc.vlu_timestamp_tz.timestamp_date = timestamp.value().timestamp_date;
-			impure->vlu_misc.vlu_timestamp_tz.timestamp_time = timestamp.value().timestamp_time;
-			impure->vlu_misc.vlu_timestamp_tz.timestamp_zone =
-				((ISC_TIMESTAMP_TZ*) valueDsc->dsc_address)->timestamp_zone;
+			impure->vlu_misc.vlu_timestamp_tz.utc_timestamp = timestamp.value();
+			impure->vlu_misc.vlu_timestamp_tz.time_zone = ((ISC_TIMESTAMP_TZ*) valueDsc->dsc_address)->time_zone;
 			TimeZoneUtil::localTimeStampToUtc(impure->vlu_misc.vlu_timestamp_tz);
 			break;
 	}

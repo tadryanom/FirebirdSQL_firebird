@@ -304,9 +304,8 @@ public:
 	Firebird::TimeStamp getLocalTimeStamp() const
 	{
 		ISC_TIMESTAMP_TZ timeStampTz;
-		timeStampTz.timestamp_date = req_timestamp_utc.value().timestamp_date;
-		timeStampTz.timestamp_time = req_timestamp_utc.value().timestamp_time;
-		timeStampTz.timestamp_zone = Firebird::TimeZoneUtil::UTC_ZONE;
+		timeStampTz.utc_timestamp = req_timestamp_utc.value();
+		timeStampTz.time_zone = Firebird::TimeZoneUtil::UTC_ZONE;
 		Firebird::TimeZoneUtil::localTimeStampToUtc(timeStampTz);
 
 		return Firebird::TimeZoneUtil::timeStampTzToTimeStamp(timeStampTz, req_attachment->att_current_timezone);
