@@ -4375,7 +4375,9 @@ void AlterDomainNode::checkUpdate(const dyn_fld& origFld, const dyn_fld& newFld)
 
 		case blr_sql_date:
 		case blr_sql_time:
+		case blr_sql_time_tz:
 		case blr_timestamp:
+		case blr_timestamp_tz:
 		case blr_int64:
 		case blr_long:
 		case blr_short:
@@ -4416,11 +4418,15 @@ void AlterDomainNode::checkUpdate(const dyn_fld& origFld, const dyn_fld& newFld)
 	// DATE types
 	case blr_sql_date:
 	case blr_sql_time:
+	case blr_sql_time_tz:
 	case blr_timestamp:
+	case blr_timestamp_tz:
 		switch (newFld.dyn_dtype)
 		{
 		case blr_sql_date:
-			if (origFld.dyn_dtype == blr_sql_time)
+			if (origFld.dyn_dtype == blr_sql_time ||
+				origFld.dyn_dtype == blr_sql_time_tz ||
+				origFld.dyn_dtype == blr_timestamp_tz)
 			{
 				// Cannot change datatype for column %s.  Conversion from base type %s to base type %s is not supported.
 				errorCode = isc_dyn_invalid_dtype_conversion;
@@ -4428,7 +4434,19 @@ void AlterDomainNode::checkUpdate(const dyn_fld& origFld, const dyn_fld& newFld)
 			break;
 
 		case blr_sql_time:
-			if (origFld.dyn_dtype == blr_sql_date)
+			if (origFld.dyn_dtype == blr_sql_date ||
+				origFld.dyn_dtype == blr_sql_time_tz ||
+				origFld.dyn_dtype == blr_timestamp_tz)
+			{
+				// Cannot change datatype for column %s.  Conversion from base type %s to base type %s is not supported.
+				errorCode = isc_dyn_invalid_dtype_conversion;
+			}
+			break;
+
+		case blr_sql_time_tz:
+			if (origFld.dyn_dtype == blr_sql_date ||
+				origFld.dyn_dtype == blr_sql_time ||
+				origFld.dyn_dtype == blr_timestamp)
 			{
 				// Cannot change datatype for column %s.  Conversion from base type %s to base type %s is not supported.
 				errorCode = isc_dyn_invalid_dtype_conversion;
@@ -4436,14 +4454,27 @@ void AlterDomainNode::checkUpdate(const dyn_fld& origFld, const dyn_fld& newFld)
 			break;
 
 		case blr_timestamp:
-			if (origFld.dyn_dtype == blr_sql_time)
+			if (origFld.dyn_dtype == blr_sql_time ||
+				origFld.dyn_dtype == blr_sql_time_tz ||
+				origFld.dyn_dtype == blr_timestamp_tz)
 			{
 				// Cannot change datatype for column %s.  Conversion from base type %s to base type %s is not supported.
 				errorCode = isc_dyn_invalid_dtype_conversion;
 			}
 			break;
 
-		// If the original field is a date field and the new field is a character field,
+		case blr_timestamp_tz:
+			if (origFld.dyn_dtype == blr_sql_date ||
+				origFld.dyn_dtype == blr_sql_time ||
+				origFld.dyn_dtype == blr_sql_time_tz ||
+				origFld.dyn_dtype == blr_timestamp)
+			{
+				// Cannot change datatype for column %s.  Conversion from base type %s to base type %s is not supported.
+				errorCode = isc_dyn_invalid_dtype_conversion;
+			}
+			break;
+
+		// If the original field is a datetime field and the new field is a character field,
 		// is there enough space in the new field?
 		case blr_text:
 		case blr_text2:
@@ -4486,7 +4517,9 @@ void AlterDomainNode::checkUpdate(const dyn_fld& origFld, const dyn_fld& newFld)
 
 		case blr_sql_date:
 		case blr_sql_time:
+		case blr_sql_time_tz:
 		case blr_timestamp:
+		case blr_timestamp_tz:
 			// Cannot change datatype for column %s.  Conversion from base type %s to base type %s is not supported.
 			errorCode = isc_dyn_invalid_dtype_conversion;
 			break;
