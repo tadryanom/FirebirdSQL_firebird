@@ -595,7 +595,8 @@ void CVT_string_to_datetime(const dsc* desc,
 			}
 			description[i] = precision;
 		}
-		else if (LETTER7(c) && !have_english_month)
+		// Month names are only allowed in first 2 positions
+		else if (LETTER7(c) && !have_english_month && i < 2)
 		{
 			TEXT temp[sizeof(YESTERDAY) + 1];
 
@@ -620,8 +621,7 @@ void CVT_string_to_datetime(const dsc* desc,
 			const TEXT* const* month_ptr = FB_LONG_MONTHS_UPPER;
 			while (true)
 			{
-				// Month names are only allowed in first 2 positions
-				if (*month_ptr && i < 2)
+				if (*month_ptr)
 				{
 					t = temp;
 					const TEXT* m = *month_ptr++;
@@ -699,9 +699,12 @@ void CVT_string_to_datetime(const dsc* desc,
 		}
 		else
 		{
-			// Not a digit and not a letter - must be punctuation
-			CVT_conversion_error(desc, cb->err);
-			return;
+			if (expect_type == expect_sql_date || i != 3)
+				CVT_conversion_error(desc, cb->err);
+
+			// May be a timezone after a date when expecting a timestamp.
+			--i;
+			break;
 		}
 
 		components[i] = n;
