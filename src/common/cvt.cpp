@@ -638,7 +638,7 @@ void CVT_string_to_datetime(const dsc* desc,
 					// it's not a month name, so it's either a magic word or
 					// a non-date string.  If there are more characters, it's bad
 
-					if (!allow_special)
+					if (!allow_special || i != 0)
 						CVT_conversion_error(desc, cb->err);
 
 					description[i] = SPECIAL;
