@@ -300,12 +300,18 @@ Firebird 4.0
 
     BINARY
     DECFLOAT
+    LOCAL
+    LOCALTIME
+    LOCALTIMESTAMP
     RDB$ERROR *
     RDB$ROLE_IN_USE *
     RDB$SYSTEM_PRIVILEGE *
+    TIMEZONE_HOUR
+    TIMEZONE_MINUTE
     UNBOUNDED (2)
     VARBINARY
     WINDOW
+    WITHOUT
 
   Added as non-reserved words:
 
@@ -338,3 +344,4 @@ Firebird 4.0
     TIES
     TOTALORDER *
     TRAPS *
+    ZONE
