@@ -71,7 +71,7 @@ static void skipSpaces(const char*& p, const char* end);
 struct TimeZoneStartup
 {
 	TimeZoneStartup(MemoryPool& pool)
-		: systemTimeZone(TimeZoneUtil::UTC_ZONE),
+		: systemTimeZone(TimeZoneUtil::GMT_ZONE),
 		  nameIdMap(pool)
 	{
 #if defined DEV_BUILD && defined TZ_UPDATE

@@ -532,7 +532,7 @@ ISC_TIMESTAMP EngineCallbacks::getCurrentTimeStampUtc()
 		return tdbb->getRequest()->req_timestamp_utc.value();
 	}
 
-	return TimeZoneUtil::timeStampTzToTimeStamp(TimeZoneUtil::getCurrentTimeStampUtc(), TimeZoneUtil::UTC_ZONE);
+	return TimeZoneUtil::timeStampTzToTimeStamp(TimeZoneUtil::getCurrentTimeStampUtc(), TimeZoneUtil::GMT_ZONE);
 }
 
 
@@ -543,7 +543,7 @@ USHORT EngineCallbacks::getSessionTimeZone()
 	if (tdbb && (tdbb->getType() == ThreadData::tddDBB) && tdbb->getAttachment())
 		return tdbb->getAttachment()->att_current_timezone;
 
-	return TimeZoneUtil::UTC_ZONE;
+	return TimeZoneUtil::GMT_ZONE;
 }
 
 

@@ -3413,7 +3413,7 @@ namespace
 
 	ISC_TIMESTAMP CommonCallbacks::getCurrentTimeStampUtc()
 	{
-		return TimeZoneUtil::timeStampTzToTimeStamp(TimeZoneUtil::getCurrentTimeStampUtc(), TimeZoneUtil::UTC_ZONE);
+		return TimeZoneUtil::timeStampTzToTimeStamp(TimeZoneUtil::getCurrentTimeStampUtc(), TimeZoneUtil::GMT_ZONE);
 	}
 
 	USHORT CommonCallbacks::getSessionTimeZone()

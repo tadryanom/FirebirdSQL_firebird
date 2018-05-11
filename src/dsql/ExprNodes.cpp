@@ -4120,7 +4120,7 @@ dsc* CurrentDateNode::execute(thread_db* tdbb, jrd_req* request) const
 
 	ISC_TIMESTAMP_TZ timeStampTz;
 	timeStampTz.utc_timestamp = request->req_timestamp_utc.value();
-	timeStampTz.time_zone = TimeZoneUtil::UTC_ZONE;
+	timeStampTz.time_zone = TimeZoneUtil::GMT_ZONE;
 
 	impure->vlu_misc.vlu_sql_date = TimeZoneUtil::timeStampTzToTimeStamp(
 		timeStampTz, request->req_attachment->att_current_timezone).timestamp_date;
@@ -7922,7 +7922,7 @@ dsc* LocalTimeNode::execute(thread_db* tdbb, jrd_req* request) const
 
 	ISC_TIMESTAMP_TZ timeStampTz;
 	timeStampTz.utc_timestamp = request->req_timestamp_utc.value();
-	timeStampTz.time_zone = TimeZoneUtil::UTC_ZONE;
+	timeStampTz.time_zone = TimeZoneUtil::GMT_ZONE;
 
 	impure->vlu_misc.vlu_sql_time = TimeZoneUtil::timeStampTzToTimeStamp(
 		timeStampTz, request->req_attachment->att_current_timezone).timestamp_time;
