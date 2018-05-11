@@ -706,8 +706,17 @@ static USHORT makeFromRegion(const char* str, unsigned strLen)
 
 	const char* start = str;
 
-	while (str < end && ((*str >= 'a' && *str <= 'z') || (*str >= 'A' && *str <= 'Z') || *str == '_' || *str == '/'))
+	while (str < end &&
+		((*str >= 'a' && *str <= 'z') ||
+		 (*str >= 'A' && *str <= 'Z') ||
+		 *str == '_' ||
+		 *str == '/') ||
+		 (str != start && *str >= '0' && *str <= '9') ||
+		 (str != start && *str == '+') ||
+		 (str != start && *str == '-'))
+	{
 		++str;
+	}
 
 	unsigned len = str - start;
 
