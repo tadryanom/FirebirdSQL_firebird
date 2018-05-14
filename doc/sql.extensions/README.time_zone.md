@@ -223,6 +223,16 @@ select localtimestamp
 
 # TODO: CURRENT_TIME and CURRENT_TIMESTAMP changes
 
+## Virtual tables
+
+### `RDB$TIME_ZONES` table
+
+This virtual table lists time zones supported in the engine.
+
+Columns:
+- `RDB$TIME_ZONE_ID` type `INTEGER`
+- `RDB$TIME_ZONE_NAME` type `CHAR(63)`
+
 
 # Appendix: time zone regions
 

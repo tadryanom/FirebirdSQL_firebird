@@ -27,6 +27,7 @@
 #ifndef COMMON_TIME_ZONE_UTIL_H
 #define COMMON_TIME_ZONE_UTIL_H
 
+#include <functional>
 #include "../common/classes/fb_string.h"
 #include "../common/cvt.h"
 
@@ -57,6 +58,8 @@ public:
 
 public:
 	static USHORT getSystemTimeZone();
+
+	static void iterateRegions(std::function<void  (USHORT, const char*)> func);
 
 	static USHORT parse(const char* str, unsigned strLen);
 	static unsigned format(char* buffer, size_t bufferSize, USHORT timeZone);

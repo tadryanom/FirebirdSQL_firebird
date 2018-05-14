@@ -78,6 +78,7 @@
 #include "../jrd/RecordSourceNodes.h"
 #include "../jrd/VirtualTable.h"
 #include "../jrd/Monitoring.h"
+#include "../jrd/TimeZone.h"
 #include "../jrd/UserManagement.h"
 #include "../common/classes/array.h"
 #include "../common/classes/objects_array.h"
@@ -2263,6 +2264,10 @@ static RecordSource* gen_retrieval(thread_db*     tdbb,
 
 		case rel_sec_db_creators:
 			rsb = FB_NEW_POOL(*tdbb->getDefaultPool()) DbCreatorsScan(csb, alias, stream, relation);
+			break;
+
+		case rel_time_zones:
+			rsb = FB_NEW_POOL(*tdbb->getDefaultPool()) TimeZonesTableScan(csb, alias, stream, relation);
 			break;
 
 		default:

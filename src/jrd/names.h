@@ -416,3 +416,7 @@ NAME("MON$STATEMENT_TIMER", nam_stmt_timer)
 
 NAME("MON$CONNECTION_COMPRESSED", nam_conn_compressed)
 NAME("MON$CONNECTION_ENCRYPTED", nam_conn_encrypted)
+
+NAME("RDB$TIME_ZONES", nam_time_zones)
+NAME("RDB$TIME_ZONE_ID", nam_tz_id)
+NAME("RDB$TIME_ZONE_NAME", nam_tz_name)

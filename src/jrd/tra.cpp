@@ -40,6 +40,7 @@
 #include "../jrd/rse.h"
 #include "../jrd/intl_classes.h"
 #include "../common/ThreadStart.h"
+#include "../jrd/TimeZone.h"
 #include "../jrd/UserManagement.h"
 #include "../jrd/blb_proto.h"
 #include "../jrd/cch_proto.h"
@@ -3431,6 +3432,7 @@ jrd_tra::~jrd_tra()
 
 	delete tra_undo_space;
 	delete tra_user_management;
+	delete tra_timezone_snapshot;
 	delete tra_mapping_list;
 	delete tra_gen_ids;
 
@@ -3471,6 +3473,15 @@ void jrd_tra::setInterface(JTransaction* jt)
 {
 	fb_assert(tra_interface == NULL || tra_interface == jt);
 	tra_interface = jt;
+}
+
+
+TimeZoneSnapshot* jrd_tra::getTimeZoneSnapshot(thread_db* tdbb)
+{
+	if (!tra_timezone_snapshot)
+		tra_timezone_snapshot = FB_NEW_POOL(*tra_pool) TimeZoneSnapshot(tdbb, *tra_pool);
+
+	return tra_timezone_snapshot;
 }
 
 

@@ -697,3 +697,9 @@
 	const USHORT  f_mon_tab_rec_stat_id = 3;
 
 
+// Relation 50 (RDB$TIME_ZONES)
+
+	const USHORT  f_tz_id = 0;
+	const USHORT  f_tz_name = 1;
+
+

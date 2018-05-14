@@ -46,13 +46,14 @@ using namespace Firebird;
 
 //-------------------------------------
 
-struct TimeZoneDesc
+namespace
 {
-	const char* asciiName;
-	const UChar* icuName;
-};
-
-//-------------------------------------
+	struct TimeZoneDesc
+	{
+		const char* asciiName;
+		const UChar* icuName;
+	};
+}	// namespace
 
 #include "./TimeZones.h"
 
@@ -68,170 +69,175 @@ static void skipSpaces(const char*& p, const char* end);
 
 //-------------------------------------
 
-struct TimeZoneStartup
+namespace
 {
-	TimeZoneStartup(MemoryPool& pool)
-		: systemTimeZone(TimeZoneUtil::GMT_ZONE),
-		  nameIdMap(pool)
+	struct TimeZoneStartup
 	{
+		TimeZoneStartup(MemoryPool& pool)
+			: systemTimeZone(TimeZoneUtil::GMT_ZONE),
+			  nameIdMap(pool)
+		{
 #if defined DEV_BUILD && defined TZ_UPDATE
-		tzUpdate();
+			tzUpdate();
 #endif
 
-		for (USHORT i = 0; i < FB_NELEM(TIME_ZONE_LIST); ++i)
-		{
-			string s(TIME_ZONE_LIST[i].asciiName);
-			s.upper();
-			nameIdMap.put(s, i);
-		}
+			for (USHORT i = 0; i < FB_NELEM(TIME_ZONE_LIST); ++i)
+			{
+				string s(TIME_ZONE_LIST[i].asciiName);
+				s.upper();
+				nameIdMap.put(s, i);
+			}
 
-		UErrorCode icuErrorCode = U_ZERO_ERROR;
+			UErrorCode icuErrorCode = U_ZERO_ERROR;
 
-		Jrd::UnicodeUtil::ConversionICU& icuLib = Jrd::UnicodeUtil::getConversionICU();
-		UCalendar* icuCalendar = icuLib.ucalOpen(NULL, -1, NULL, UCAL_GREGORIAN, &icuErrorCode);
+			Jrd::UnicodeUtil::ConversionICU& icuLib = Jrd::UnicodeUtil::getConversionICU();
+			UCalendar* icuCalendar = icuLib.ucalOpen(NULL, -1, NULL, UCAL_GREGORIAN, &icuErrorCode);
 
-		if (!icuCalendar)
-		{
-			gds__log("ICU's ucal_open error opening the default callendar.");
-			return;
-		}
+			if (!icuCalendar)
+			{
+				gds__log("ICU's ucal_open error opening the default callendar.");
+				return;
+			}
 
-		UChar buffer[TimeZoneUtil::MAX_SIZE];
-		bool found = false;
+			UChar buffer[TimeZoneUtil::MAX_SIZE];
+			bool found = false;
 
-		int32_t len = icuLib.ucalGetTimeZoneID(icuCalendar, buffer, FB_NELEM(buffer), &icuErrorCode);
+			int32_t len = icuLib.ucalGetTimeZoneID(icuCalendar, buffer, FB_NELEM(buffer), &icuErrorCode);
 
-		if (!U_FAILURE(icuErrorCode))
-		{
-			bool error;
-			string bufferStrUnicode(reinterpret_cast<const char*>(buffer), len * sizeof(USHORT));
-			string bufferStrAscii(IntlUtil::convertUtf16ToAscii(bufferStrUnicode, &error));
-			found = getId(bufferStrAscii, systemTimeZone);
-		}
-		else
-			icuErrorCode = U_ZERO_ERROR;
+			if (!U_FAILURE(icuErrorCode))
+			{
+				bool error;
+				string bufferStrUnicode(reinterpret_cast<const char*>(buffer), len * sizeof(USHORT));
+				string bufferStrAscii(IntlUtil::convertUtf16ToAscii(bufferStrUnicode, &error));
+				found = getId(bufferStrAscii, systemTimeZone);
+			}
+			else
+				icuErrorCode = U_ZERO_ERROR;
 
-		if (found)
-		{
+			if (found)
+			{
+				icuLib.ucalClose(icuCalendar);
+				return;
+			}
+
+			gds__log("ICU error retrieving the system time zone: %d. Fallbacking to displacement.", int(icuErrorCode));
+
+			int32_t displacement = (icuLib.ucalGet(icuCalendar, UCAL_ZONE_OFFSET, &icuErrorCode) +
+				icuLib.ucalGet(icuCalendar, UCAL_DST_OFFSET, &icuErrorCode)) / U_MILLIS_PER_MINUTE;
+
 			icuLib.ucalClose(icuCalendar);
-			return;
+
+			if (!U_FAILURE(icuErrorCode))
+			{
+				int sign = displacement < 0 ? -1 : 1;
+				unsigned tzh = (unsigned) abs(int(displacement / 60));
+				unsigned tzm = (unsigned) abs(int(displacement % 60));
+				systemTimeZone = makeFromOffset(sign, tzh, tzm);
+			}
+			else
+				gds__log("Cannot retrieve the system time zone: %d.", int(icuErrorCode));
 		}
 
-		gds__log("ICU error retrieving the system time zone: %d. Fallbacking to displacement.", int(icuErrorCode));
-
-		int32_t displacement = (icuLib.ucalGet(icuCalendar, UCAL_ZONE_OFFSET, &icuErrorCode) +
-			icuLib.ucalGet(icuCalendar, UCAL_DST_OFFSET, &icuErrorCode)) / U_MILLIS_PER_MINUTE;
-
-		icuLib.ucalClose(icuCalendar);
-
-		if (!U_FAILURE(icuErrorCode))
+		bool getId(string name, USHORT& id)
 		{
-			int sign = displacement < 0 ? -1 : 1;
-			unsigned tzh = (unsigned) abs(int(displacement / 60));
-			unsigned tzm = (unsigned) abs(int(displacement % 60));
-			systemTimeZone = makeFromOffset(sign, tzh, tzm);
-		}
-		else
-			gds__log("Cannot retrieve the system time zone: %d.", int(icuErrorCode));
-	}
+			USHORT index;
+			name.upper();
 
-	bool getId(string name, USHORT& id)
-	{
-		USHORT index;
-		name.upper();
-
-		if (nameIdMap.get(name, index))
-		{
-			id = MAX_USHORT - index;
-			return true;
+			if (nameIdMap.get(name, index))
+			{
+				id = MAX_USHORT - index;
+				return true;
+			}
+			else
+				return false;
 		}
-		else
-			return false;
-	}
 
 #if defined DEV_BUILD && defined TZ_UPDATE
-	void tzUpdate()
-	{
-		SortedObjectsArray<string> currentZones, icuZones;
-
-		for (unsigned i = 0; i < FB_NELEM(TIME_ZONE_LIST); ++i)
-			currentZones.push(TIME_ZONE_LIST[i].asciiName);
-
-		Jrd::UnicodeUtil::ConversionICU& icuLib = Jrd::UnicodeUtil::getConversionICU();
-		UErrorCode icuErrorCode = U_ZERO_ERROR;
-
-		UEnumeration* uenum = icuLib.ucalOpenTimeZones(&icuErrorCode);
-		int32_t length;
-
-		while (const UChar* str = icuLib.uenumUnext(uenum, &length, &icuErrorCode))
+		void tzUpdate()
 		{
-			char buffer[256];
+			SortedObjectsArray<string> currentZones, icuZones;
 
-			for (int i = 0; i <= length; ++i)
-				buffer[i] = (char) str[i];
+			for (unsigned i = 0; i < FB_NELEM(TIME_ZONE_LIST); ++i)
+				currentZones.push(TIME_ZONE_LIST[i].asciiName);
 
-			icuZones.push(buffer);
+			Jrd::UnicodeUtil::ConversionICU& icuLib = Jrd::UnicodeUtil::getConversionICU();
+			UErrorCode icuErrorCode = U_ZERO_ERROR;
+
+			UEnumeration* uenum = icuLib.ucalOpenTimeZones(&icuErrorCode);
+			int32_t length;
+
+			while (const UChar* str = icuLib.uenumUnext(uenum, &length, &icuErrorCode))
+			{
+				char buffer[256];
+
+				for (int i = 0; i <= length; ++i)
+					buffer[i] = (char) str[i];
+
+				icuZones.push(buffer);
+			}
+
+			icuLib.uenumClose(uenum);
+
+			for (auto const& zone : currentZones)
+			{
+				FB_SIZE_T pos;
+
+				if (icuZones.find(zone, pos))
+					icuZones.remove(pos);
+				else
+					printf("--> %s does not exist in ICU.\n", zone.c_str());
+			}
+
+			ObjectsArray<string> newZones;
+
+			for (int i = 0; i < FB_NELEM(TIME_ZONE_LIST); ++i)
+				newZones.push(TIME_ZONE_LIST[i].asciiName);
+
+			for (auto const& zone : icuZones)
+				newZones.push(zone);
+
+			printf("// The content of this file is generated with help of macro TZ_UPDATE.\n\n");
+
+			int index = 0;
+
+			for (auto const& zone : newZones)
+			{
+				printf("static const UChar TZSTR_%d[] = {", index);
+
+				for (int i = 0; i < zone.length(); ++i)
+					printf("'%c', ", zone[i]);
+
+				printf("'\\0'};\n");
+
+				++index;
+			}
+
+			printf("\n");
+
+			printf("// Do not change order of items in this array! The index corresponds to a TimeZone ID, which must be fixed!\n");
+			printf("static const TimeZoneDesc TIME_ZONE_LIST[] = {");
+
+			index = 0;
+
+			for (auto const& zone : newZones)
+			{
+				printf("%s\n\t{\"%s\", TZSTR_%d}", (index == 0 ? "" : ","), zone.c_str(), index);
+				++index;
+			}
+
+			printf("\n");
+			printf("};\n\n");
 		}
-
-		icuLib.uenumClose(uenum);
-
-		for (auto const& zone : currentZones)
-		{
-			FB_SIZE_T pos;
-
-			if (icuZones.find(zone, pos))
-				icuZones.remove(pos);
-			else
-				printf("--> %s does not exist in ICU.\n", zone.c_str());
-		}
-
-		ObjectsArray<string> newZones;
-
-		for (int i = 0; i < FB_NELEM(TIME_ZONE_LIST); ++i)
-			newZones.push(TIME_ZONE_LIST[i].asciiName);
-
-		for (auto const& zone : icuZones)
-			newZones.push(zone);
-
-		printf("// The content of this file is generated with help of macro TZ_UPDATE.\n\n");
-
-		int index = 0;
-
-		for (auto const& zone : newZones)
-		{
-			printf("static const UChar TZSTR_%d[] = {", index);
-
-			for (int i = 0; i < zone.length(); ++i)
-				printf("'%c', ", zone[i]);
-
-			printf("'\\0'};\n");
-
-			++index;
-		}
-
-		printf("\n");
-
-		printf("// Do not change order of items in this array! The index corresponds to a TimeZone ID, which must be fixed!\n");
-		printf("static const TimeZoneDesc TIME_ZONE_LIST[] = {");
-
-		index = 0;
-
-		for (auto const& zone : newZones)
-		{
-			printf("%s\n\t{\"%s\", TZSTR_%d}", (index == 0 ? "" : ","), zone.c_str(), index);
-			++index;
-		}
-
-		printf("\n");
-		printf("};\n\n");
-	}
 #endif	// defined DEV_BUILD && defined TZ_UPDATE
 
-	USHORT systemTimeZone;
+		USHORT systemTimeZone;
 
-private:
-	GenericMap<Pair<Left<string, USHORT> > > nameIdMap;
-};
+	private:
+		GenericMap<Pair<Left<string, USHORT> > > nameIdMap;
+	};
+}	// namespace
+
+//-------------------------------------
 
 static InitInstance<TimeZoneStartup> timeZoneStartup;
 
@@ -241,6 +247,12 @@ static InitInstance<TimeZoneStartup> timeZoneStartup;
 USHORT TimeZoneUtil::getSystemTimeZone()
 {
 	return timeZoneStartup().systemTimeZone;
+}
+
+void TimeZoneUtil::iterateRegions(std::function<void  (USHORT, const char*)> func)
+{
+	for (USHORT i = 0; i < FB_NELEM(TIME_ZONE_LIST); ++i)
+		func(MAX_USHORT - i, TIME_ZONE_LIST[i].asciiName);
 }
 
 // Parses a time zone, offset- or region-based.
