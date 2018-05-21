@@ -345,6 +345,10 @@ void Connection::generateDPB(thread_db* tdbb, ClumpletWriter& dpb,
 		dpb.insertString(isc_dpb_lc_ctype, cs->getName());
 	}
 
+	char timeZoneBuffer[TimeZoneUtil::MAX_SIZE];
+	TimeZoneUtil::format(timeZoneBuffer, sizeof(timeZoneBuffer), attachment->att_current_timezone);
+	dpb.insertString(isc_dpb_session_time_zone, timeZoneBuffer);
+
 	// remote network address???
 }
 

@@ -990,6 +990,7 @@ public:
 	PathName	dpb_remote_process;
 	PathName	dpb_org_filename;
 	string	dpb_config;
+	string	dpb_session_tz;
 
 public:
 	static const ULONG DPB_FLAGS_MASK = DBB_damaged;
@@ -1787,6 +1788,12 @@ JAttachment* JProvider::internalAttach(CheckStatusWrapper* user_status, const ch
 			// Figure out what character set & collation this attachment prefers
 
 			find_intl_charset(tdbb, attachment, &options);
+
+			if (!options.dpb_session_tz.isEmpty())
+			{
+				attachment->att_current_timezone = TimeZoneUtil::parse(
+					options.dpb_session_tz.c_str(), options.dpb_session_tz.length());
+			}
 
 			// if the attachment is through gbak and this attachment is not by owner
 			// or sysdba then return error. This has been added here to allow for the
@@ -2824,6 +2831,12 @@ JAttachment* JProvider::createDatabase(CheckStatusWrapper* user_status, const ch
 			// Figure out what character set & collation this attachment prefers
 
 			find_intl_charset(tdbb, attachment, &options);
+
+			if (!options.dpb_session_tz.isEmpty())
+			{
+				attachment->att_current_timezone = TimeZoneUtil::parse(
+					options.dpb_session_tz.c_str(), options.dpb_session_tz.length());
+			}
 
 			CCH_flush(tdbb, FLUSH_FINI, 0);
 
@@ -6566,6 +6579,10 @@ void DatabaseOptions::get(const UCHAR* dpb, USHORT dpb_length, bool& invalid_cli
 
 		case isc_dpb_config:
 			getString(rdr, dpb_config);
+			break;
+
+		case isc_dpb_session_time_zone:
+			rdr.getString(dpb_session_tz);
 			break;
 
 		default:

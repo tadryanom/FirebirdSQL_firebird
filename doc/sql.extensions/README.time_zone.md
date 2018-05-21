@@ -4,7 +4,7 @@ Time zone support consists of `TIME WITH TIME ZONE` and `TIMESTAMP WITH TIME ZON
 
 The first important thing to understand is that `TIME WITHOUT TIME ZONE`, `TIMESTAMP WITHOUT TIME ZONE` and `DATE` data types are defined to use the session time zone when converting from or to a `TIME WITH TIME ZONE` or `TIMESTAMP WITH TIME ZONE`. `TIME` and `TIMESTAMP` are synonymous to theirs respectively `WITHOUT TIME ZONE` data types.
 
-The session time zone, as the name implies, can be a different one for each database attachment. By default it starts defined to be the same time zone used by the Firebird database OS process.
+The session time zone, as the name implies, can be a different one for each database attachment. It can be set with the isc_dpb_session_time_zone DPB, and if not, it starts by default defined to be the same time zone used by the Firebird database OS process.
 
 It can then be changed with `SET TIME ZONE` statement to a given time zone or reset to its original value with `SET TIME ZONE LOCAL`.
 
