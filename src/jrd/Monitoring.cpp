@@ -655,6 +655,16 @@ void SnapshotData::putField(thread_db* tdbb, Record* record, const DumpField& fi
 		from_desc.makeTimestamp(&value);
 		MOV_move(tdbb, &from_desc, &to_desc);
 	}
+	else if (field.type == VALUE_TIMESTAMP_TZ)
+	{
+		fb_assert(field.length == sizeof(ISC_TIMESTAMP_TZ));
+		ISC_TIMESTAMP_TZ value;
+		memcpy(&value, field.data, field.length);
+
+		dsc from_desc;
+		from_desc.makeTimestampTz(&value);
+		MOV_move(tdbb, &from_desc, &to_desc);
+	}
 	else if (field.type == VALUE_STRING)
 	{
 		if (to_desc.isBlob())

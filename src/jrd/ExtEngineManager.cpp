@@ -43,6 +43,8 @@
 #include "../jrd/mov_proto.h"
 #include "../jrd/par_proto.h"
 #include "../jrd/Function.h"
+#include "../jrd/TimeZone.h"
+#include "../jrd/SystemPackages.h"
 #include "../common/isc_proto.h"
 #include "../common/classes/auto.h"
 #include "../common/classes/fb_string.h"
@@ -1016,8 +1018,114 @@ unloaded only on program exit, causing at that moment AV if this code is active:
 //---------------------
 
 
+namespace
+{
+	class SystemEngine : public StdPlugin<IExternalEngineImpl<SystemEngine, ThrowStatusExceptionWrapper> >
+	{
+	public:
+		explicit SystemEngine()
+		{
+		}
+
+		int release() override
+		{
+			if (--refCounter == 0)
+			{
+				delete this;
+				return 0;
+			}
+
+			return 1;
+		}
+
+	public:
+		void open(ThrowStatusExceptionWrapper* status, IExternalContext* context,
+			char* name, unsigned nameSize) override
+		{
+		}
+
+		void openAttachment(ThrowStatusExceptionWrapper* status, IExternalContext* context) override
+		{
+		}
+
+		void closeAttachment(ThrowStatusExceptionWrapper* status, IExternalContext* context) override
+		{
+		}
+
+		IExternalFunction* makeFunction(ThrowStatusExceptionWrapper* status, IExternalContext* context,
+			IRoutineMetadata* metadata, IMetadataBuilder* inBuilder, IMetadataBuilder* outBuilder) override
+		{
+			const char* packageName = metadata->getPackage(status);
+			const char* routineName = metadata->getName(status);
+
+			for (auto& package : SystemPackage::LIST)
+			{
+				if (strcmp(package.name, packageName) == 0)
+				{
+					for (auto& routine : package.functions)
+					{
+						if (strcmp(routine.name, routineName) == 0)
+							return routine.factory(status, context, metadata, inBuilder, outBuilder);
+					}
+				}
+			}
+
+			fb_assert(false);
+			return nullptr;
+		}
+
+		IExternalProcedure* makeProcedure(ThrowStatusExceptionWrapper* status, IExternalContext* context,
+			IRoutineMetadata* metadata, IMetadataBuilder* inBuilder, IMetadataBuilder* outBuilder) override
+		{
+			const char* packageName = metadata->getPackage(status);
+			const char* routineName = metadata->getName(status);
+
+			for (auto& package : SystemPackage::LIST)
+			{
+				if (strcmp(package.name, packageName) == 0)
+				{
+					for (auto& routine : package.procedures)
+					{
+						if (strcmp(routine.name, routineName) == 0)
+							return routine.factory(status, context, metadata, inBuilder, outBuilder);
+					}
+				}
+			}
+
+			fb_assert(false);
+			return nullptr;
+		}
+
+		IExternalTrigger* makeTrigger(ThrowStatusExceptionWrapper* status, IExternalContext* context,
+			IRoutineMetadata* metadata, IMetadataBuilder* fieldsBuilder) override
+		{
+			fb_assert(false);
+			return nullptr;
+		}
+
+	public:
+		static SystemEngine* INSTANCE;
+	};
+
+	SystemEngine* SystemEngine::INSTANCE = nullptr;
+}
+
+
+//---------------------
+
+
 void ExtEngineManager::initialize()
 {
+	SystemEngine::INSTANCE = FB_NEW SystemEngine();
+}
+
+
+ExtEngineManager::ExtEngineManager(MemoryPool& p)
+	: PermanentStorage(p),
+	  engines(p),
+	  enginesAttachments(p)
+{
+	engines.put("SYSTEM", SystemEngine::INSTANCE);
 }
 
 

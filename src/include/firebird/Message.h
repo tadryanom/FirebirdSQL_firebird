@@ -291,6 +291,23 @@ public:
 	}
 
 public:
+	FbDate& operator=(ISC_DATE& val)
+	{
+		*(this) = *(FbDate*) &val;
+		return *this;
+	}
+
+	operator ISC_DATE&()
+	{
+		return *(ISC_DATE*) this;
+	}
+
+	operator const ISC_DATE&() const
+	{
+		return *(ISC_DATE*) this;
+	}
+
+public:
 	ISC_DATE value;
 };
 
@@ -338,12 +355,46 @@ public:
 	}
 
 public:
+	FbTime& operator=(ISC_TIME& val)
+	{
+		*(this) = *(FbTime*) &val;
+		return *this;
+	}
+
+	operator ISC_TIME&()
+	{
+		return *(ISC_TIME*) this;
+	}
+
+	operator const ISC_TIME&() const
+	{
+		return *(ISC_TIME*) this;
+	}
+
+public:
 	ISC_TIME value;
 };
 
 // This class has memory layout identical to ISC_TIME_TZ.
 class FbTimeTz
 {
+public:
+	FbTimeTz& operator=(ISC_TIME_TZ& val)
+	{
+		*(this) = *(FbTimeTz*) &val;
+		return *this;
+	}
+
+	operator ISC_TIME_TZ&()
+	{
+		return *(ISC_TIME_TZ*) this;
+	}
+
+	operator const ISC_TIME_TZ&() const
+	{
+		return *(ISC_TIME_TZ*) this;
+	}
+
 public:
 	FbTime utcTime;
 	ISC_USHORT timeZone;
@@ -353,6 +404,23 @@ public:
 class FbTimestamp
 {
 public:
+	FbTimestamp& operator=(ISC_TIMESTAMP& val)
+	{
+		*(this) = *(FbTimestamp*) &val;
+		return *this;
+	}
+
+	operator ISC_TIMESTAMP&()
+	{
+		return *(ISC_TIMESTAMP*) this;
+	}
+
+	operator const ISC_TIMESTAMP&() const
+	{
+		return *(ISC_TIMESTAMP*) this;
+	}
+
+public:
 	FbDate date;
 	FbTime time;
 };
@@ -360,6 +428,23 @@ public:
 // This class has memory layout identical to ISC_TIMESTAMP_TZ.
 class FbTimestampTz
 {
+public:
+	FbTimestampTz& operator=(ISC_TIMESTAMP_TZ& val)
+	{
+		*(this) = *(FbTimestampTz*) &val;
+		return *this;
+	}
+
+	operator ISC_TIMESTAMP_TZ&()
+	{
+		return *(ISC_TIMESTAMP_TZ*) this;
+	}
+
+	operator const ISC_TIMESTAMP_TZ&() const
+	{
+		return *(ISC_TIMESTAMP_TZ*) this;
+	}
+
 public:
 	FbTimestamp utcTimestamp;
 	ISC_USHORT timeZone;

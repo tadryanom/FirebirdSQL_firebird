@@ -33,7 +33,6 @@
 #include "firebird.h"
 #include "../common/TimeZoneUtil.h"
 #include "../common/StatusHolder.h"
-#include "../common/unicode_util.h"
 #include "../common/classes/timestamp.h"
 #include "../common/classes/GenericMap.h"
 #include "unicode/ucal.h"
@@ -62,7 +61,6 @@ namespace
 static const TimeZoneDesc* getDesc(USHORT timeZone);
 static inline bool isOffset(USHORT timeZone);
 static USHORT makeFromOffset(int sign, unsigned tzh, unsigned tzm);
-static USHORT makeFromRegion(const char* str, unsigned strLen);
 static inline SSHORT offsetZoneToDisplacement(USHORT timeZone);
 static int parseNumber(const char*& p, const char* end);
 static void skipSpaces(const char*& p, const char* end);
@@ -249,7 +247,20 @@ USHORT TimeZoneUtil::getSystemTimeZone()
 	return timeZoneStartup().systemTimeZone;
 }
 
-void TimeZoneUtil::iterateRegions(std::function<void  (USHORT, const char*)> func)
+void TimeZoneUtil::getDatabaseVersion(Firebird::string& str)
+{
+	Jrd::UnicodeUtil::ConversionICU& icuLib = Jrd::UnicodeUtil::getConversionICU();
+	UErrorCode icuErrorCode = U_ZERO_ERROR;
+
+	const char* version = icuLib.ucalGetTZDataVersion(&icuErrorCode);
+
+	if (U_FAILURE(icuErrorCode))
+		status_exception::raise(Arg::Gds(isc_random) << "Error calling ICU's ucal_getTZDataVersion.");
+
+	str = version;
+}
+
+void TimeZoneUtil::iterateRegions(std::function<void (USHORT, const char*)> func)
 {
 	for (USHORT i = 0; i < FB_NELEM(TIME_ZONE_LIST); ++i)
 		func(MAX_USHORT - i, TIME_ZONE_LIST[i].asciiName);
@@ -295,7 +306,45 @@ USHORT TimeZoneUtil::parse(const char* str, unsigned strLen)
 		return makeFromOffset(sign, tzh, tzm);
 	}
 	else
-		return makeFromRegion(p, str + strLen - p);
+		return parseRegion(p, str + strLen - p);
+}
+
+// Parses a time zone id from a region string.
+USHORT TimeZoneUtil::parseRegion(const char* str, unsigned strLen)
+{
+	const char* end = str + strLen;
+
+	skipSpaces(str, end);
+
+	const char* start = str;
+
+	while (str < end &&
+		((*str >= 'a' && *str <= 'z') ||
+		 (*str >= 'A' && *str <= 'Z') ||
+		 *str == '_' ||
+		 *str == '/') ||
+		 (str != start && *str >= '0' && *str <= '9') ||
+		 (str != start && *str == '+') ||
+		 (str != start && *str == '-'))
+	{
+		++str;
+	}
+
+	unsigned len = str - start;
+
+	skipSpaces(str, end);
+
+	if (str == end)
+	{
+		string s(start, len);
+		USHORT id;
+
+		if (timeZoneStartup().getId(s, id))
+			return id;
+	}
+
+	status_exception::raise(Arg::Gds(isc_random) << "Invalid time zone region");	//// TODO:
+	return 0;
 }
 
 // Format a time zone to string, as offset or region.
@@ -353,7 +402,7 @@ void TimeZoneUtil::extractOffset(const ISC_TIMESTAMP_TZ& timeStampTz, int* sign,
 		SINT64 ticks = timeStampTz.utc_timestamp.timestamp_date * TimeStamp::ISC_TICKS_PER_DAY +
 			timeStampTz.utc_timestamp.timestamp_time;
 
-		icuLib.ucalSetMillis(icuCalendar, (ticks - (40587 * TimeStamp::ISC_TICKS_PER_DAY)) / 10, &icuErrorCode);
+		icuLib.ucalSetMillis(icuCalendar, ticksToIcuDate(ticks), &icuErrorCode);
 
 		if (U_FAILURE(icuErrorCode))
 		{
@@ -521,7 +570,7 @@ void TimeZoneUtil::decodeTimeStamp(const ISC_TIMESTAMP_TZ& timeStampTz, struct t
 		if (!icuCalendar)
 			status_exception::raise(Arg::Gds(isc_random) << "Error calling ICU's ucal_open.");
 
-		icuLib.ucalSetMillis(icuCalendar, (ticks - (40587 * TimeStamp::ISC_TICKS_PER_DAY)) / 10, &icuErrorCode);
+		icuLib.ucalSetMillis(icuCalendar, ticksToIcuDate(ticks), &icuErrorCode);
 
 		if (U_FAILURE(icuErrorCode))
 		{
@@ -685,6 +734,103 @@ ISC_TIMESTAMP_TZ TimeZoneUtil::cvtDateToTimeStampTz(const ISC_DATE& date, Callba
 
 //-------------------------------------
 
+TimeZoneRuleIterator::TimeZoneRuleIterator(USHORT aId, ISC_TIMESTAMP_TZ& aFrom, ISC_TIMESTAMP_TZ& aTo)
+	: id(aId),
+	  icuLib(Jrd::UnicodeUtil::getConversionICU()),
+	  toTicks(aTo.utc_timestamp.timestamp_date * TimeStamp::ISC_TICKS_PER_DAY + aTo.utc_timestamp.timestamp_time)
+{
+	UErrorCode icuErrorCode = U_ZERO_ERROR;
+
+	icuCalendar = icuLib.ucalOpen(getDesc(id)->icuName, -1, NULL, UCAL_GREGORIAN, &icuErrorCode);
+
+	if (!icuCalendar)
+		status_exception::raise(Arg::Gds(isc_random) << "Error calling ICU's ucal_open.");
+
+	SINT64 ticks = aFrom.utc_timestamp.timestamp_date * TimeStamp::ISC_TICKS_PER_DAY +
+		aFrom.utc_timestamp.timestamp_time;
+
+	icuDate = TimeZoneUtil::ticksToIcuDate(ticks);
+
+	icuLib.ucalSetMillis(icuCalendar, icuDate, &icuErrorCode);
+
+	if (U_FAILURE(icuErrorCode))
+	{
+		fb_assert(false);
+		status_exception::raise(Arg::Gds(isc_random) << "Error calling ICU's ucal_setMillis.");
+	}
+
+	UBool hasNext = icuLib.ucalGetTimeZoneTransitionDate(icuCalendar, UCAL_TZ_TRANSITION_PREVIOUS_INCLUSIVE,
+		&icuDate, &icuErrorCode);
+
+	if (U_FAILURE(icuErrorCode))
+	{
+		fb_assert(false);
+		status_exception::raise(Arg::Gds(isc_random) << "Error calling ICU's ucal_getTimeZoneTransitionDate.");
+	}
+
+	if (!hasNext)
+		icuDate = TimeZoneUtil::ticksToIcuDate(TimeStamp::MIN_DATE * TimeStamp::ISC_TICKS_PER_DAY);
+
+	icuLib.ucalSetMillis(icuCalendar, icuDate, &icuErrorCode);
+
+	if (U_FAILURE(icuErrorCode))
+	{
+		fb_assert(false);
+		status_exception::raise(Arg::Gds(isc_random) << "Error calling ICU's ucal_setMillis.");
+	}
+
+	startTicks = TimeZoneUtil::icuDateToTicks(icuDate);
+}
+
+TimeZoneRuleIterator::~TimeZoneRuleIterator()
+{
+	icuLib.ucalClose(icuCalendar);
+}
+
+bool TimeZoneRuleIterator::next()
+{
+	if (startTicks > toTicks)
+		return false;
+
+	UErrorCode icuErrorCode = U_ZERO_ERROR;
+
+	startTimestamp.utc_timestamp.timestamp_date = startTicks / TimeStamp::ISC_TICKS_PER_DAY;
+	startTimestamp.utc_timestamp.timestamp_time = startTicks % TimeStamp::ISC_TICKS_PER_DAY;
+	startTimestamp.time_zone = TimeZoneUtil::GMT_ZONE;
+
+	zoneOffset = icuLib.ucalGet(icuCalendar, UCAL_ZONE_OFFSET, &icuErrorCode) / U_MILLIS_PER_MINUTE;
+	dstOffset = icuLib.ucalGet(icuCalendar, UCAL_DST_OFFSET, &icuErrorCode) / U_MILLIS_PER_MINUTE;
+
+	UBool hasNext = icuLib.ucalGetTimeZoneTransitionDate(icuCalendar, UCAL_TZ_TRANSITION_NEXT,
+		&icuDate, &icuErrorCode);
+
+	if (U_FAILURE(icuErrorCode))
+	{
+		fb_assert(false);
+		status_exception::raise(Arg::Gds(isc_random) << "Error calling ICU's ucal_getTimeZoneTransitionDate.");
+	}
+
+	if (!hasNext)
+	{
+		icuDate = TimeZoneUtil::ticksToIcuDate(
+			TimeStamp::MAX_DATE * TimeStamp::ISC_TICKS_PER_DAY + TimeStamp::ISC_TICKS_PER_DAY);
+	}
+
+	icuLib.ucalSetMillis(icuCalendar, icuDate, &icuErrorCode);
+
+	SINT64 endTicks = TimeZoneUtil::icuDateToTicks(icuDate) - 1;
+
+	endTimestamp.utc_timestamp.timestamp_date = endTicks / TimeStamp::ISC_TICKS_PER_DAY;
+	endTimestamp.utc_timestamp.timestamp_time = endTicks % TimeStamp::ISC_TICKS_PER_DAY;
+	endTimestamp.time_zone = TimeZoneUtil::GMT_ZONE;
+
+	startTicks = endTicks + 1;
+
+	return true;
+}
+
+//-------------------------------------
+
 static const TimeZoneDesc* getDesc(USHORT timeZone)
 {
 	if (MAX_USHORT - timeZone < FB_NELEM(TIME_ZONE_LIST))
@@ -707,44 +853,6 @@ static USHORT makeFromOffset(int sign, unsigned tzh, unsigned tzm)
 		status_exception::raise(Arg::Gds(isc_random) << "Invalid time zone offset");	//// TODO:
 
 	return (USHORT)((tzh * 60 + tzm) * sign + TimeZoneUtil::ONE_DAY);
-}
-
-// Makes a time zone id from a region.
-static USHORT makeFromRegion(const char* str, unsigned strLen)
-{
-	const char* end = str + strLen;
-
-	skipSpaces(str, end);
-
-	const char* start = str;
-
-	while (str < end &&
-		((*str >= 'a' && *str <= 'z') ||
-		 (*str >= 'A' && *str <= 'Z') ||
-		 *str == '_' ||
-		 *str == '/') ||
-		 (str != start && *str >= '0' && *str <= '9') ||
-		 (str != start && *str == '+') ||
-		 (str != start && *str == '-'))
-	{
-		++str;
-	}
-
-	unsigned len = str - start;
-
-	skipSpaces(str, end);
-
-	if (str == end)
-	{
-		string s(start, len);
-		USHORT id;
-
-		if (timeZoneStartup().getId(s, id))
-			return id;
-	}
-
-	status_exception::raise(Arg::Gds(isc_random) << "Invalid time zone region");	//// TODO:
-	return 0;
 }
 
 // Gets the displacement from a offset-based time zone id.

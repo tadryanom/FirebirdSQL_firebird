@@ -34,27 +34,28 @@ using namespace Firebird;
 TimeZoneSnapshot::TimeZoneSnapshot(thread_db* tdbb, MemoryPool& pool)
 	: SnapshotData(pool)
 {
-	RecordBuffer* buffer = allocBuffer(tdbb, pool, rel_time_zones);
-
-	Record* record = buffer->getTempRecord();
-	record->nullify();
+	RecordBuffer* tzBuffer = allocBuffer(tdbb, pool, rel_time_zones);
+	Record* tzRecord = tzBuffer->getTempRecord();
+	tzRecord->nullify();
 
 	TimeZoneUtil::iterateRegions(
 		[=]
 		(USHORT id, const char* name)
 		{
 			SINT64 idValue = id;
-			putField(tdbb, record, DumpField(f_tz_id, VALUE_INTEGER, sizeof(idValue), &idValue));
 
-			putField(tdbb, record, DumpField(f_tz_name, VALUE_STRING, static_cast<USHORT>(strlen(name)), name));
-
-			buffer->store(record);
+			putField(tdbb, tzRecord, DumpField(f_tz_id, VALUE_INTEGER, sizeof(idValue), &idValue));
+			putField(tdbb, tzRecord, DumpField(f_tz_name, VALUE_STRING, static_cast<USHORT>(strlen(name)), name));
+			tzBuffer->store(tzRecord);
 		}
 	);
 }
 
 
-TimeZonesTableScan::TimeZonesTableScan(CompilerScratch* csb, const Firebird::string& alias,
+//--------------------------------------
+
+
+TimeZonesTableScan::TimeZonesTableScan(CompilerScratch* csb, const string& alias,
 		StreamType stream, jrd_rel* relation)
 	: VirtualTableScan(csb, alias, stream, relation)
 {
@@ -66,8 +67,59 @@ const Format* TimeZonesTableScan::getFormat(thread_db* tdbb, jrd_rel* relation) 
 }
 
 
+//--------------------------------------
+
+
 bool TimeZonesTableScan::retrieveRecord(thread_db* tdbb, jrd_rel* relation,
 	FB_UINT64 position, Record* record) const
 {
 	return tdbb->getTransaction()->getTimeZoneSnapshot(tdbb)->getData(relation)->fetch(position, record);
+}
+
+
+//--------------------------------------
+
+
+TimeZoneTransitionsResultSet::TimeZoneTransitionsResultSet(ThrowStatusExceptionWrapper* status,
+		IExternalContext* context, void* inMsg, void* outMsg)
+	: out(static_cast<TimeZoneTransitionsOutput::Type*>(outMsg))
+{
+	TimeZoneTransitionsInput::Type* in = static_cast<TimeZoneTransitionsInput::Type*>(inMsg);
+
+	out->startTimestampNull = out->endTimestampNull = out->zoneOffsetNull =
+		out->dstOffsetNull = out->effectiveOffsetNull = FB_FALSE;
+
+	USHORT tzId = TimeZoneUtil::parseRegion(in->timeZoneName.str, in->timeZoneName.length);
+
+	iterator = FB_NEW TimeZoneRuleIterator(tzId, in->fromTimestamp, in->toTimestamp);
+}
+
+FB_BOOLEAN TimeZoneTransitionsResultSet::fetch(ThrowStatusExceptionWrapper* status)
+{
+	if (!iterator->next())
+		return false;
+
+	out->startTimestamp = iterator->startTimestamp;
+	out->endTimestamp = iterator->endTimestamp;
+	out->zoneOffset = iterator->zoneOffset;
+	out->dstOffset = iterator->dstOffset;
+	out->effectiveOffset = iterator->zoneOffset + iterator->dstOffset;
+
+	return true;
+}
+
+
+//--------------------------------------
+
+
+void TimeZoneDatabaseVersionFunction::execute(ThrowStatusExceptionWrapper* status,
+	IExternalContext* context, void* inMsg, void* outMsg)
+{
+	TimeZoneDatabaseVersionOutput::Type* out = static_cast<TimeZoneDatabaseVersionOutput::Type*>(outMsg);
+
+	string str;
+	TimeZoneUtil::getDatabaseVersion(str);
+
+	out->versionNull = FB_FALSE;
+	out->version.set(str.c_str());
 }

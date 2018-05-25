@@ -24,6 +24,7 @@
 #define JRD_TIME_ZONE_H
 
 #include "firebird.h"
+#include "firebird/Message.h"
 #include "../common/classes/fb_string.h"
 #include "../jrd/Monitoring.h"
 #include "../jrd/recsrc/RecordSource.h"
@@ -51,6 +52,111 @@ protected:
 	bool retrieveRecord(thread_db* tdbb, jrd_rel* relation, FB_UINT64 position, Record* record) const override;
 };
 
+
+FB_MESSAGE(TimeZoneTransitionsInput, Firebird::ThrowStatusExceptionWrapper,
+	(FB_INTL_VARCHAR(MAX_SQL_IDENTIFIER_LEN, CS_METADATA), timeZoneName)
+	(FB_TIMESTAMP_TZ, fromTimestamp)
+	(FB_TIMESTAMP_TZ, toTimestamp)
+);
+
+FB_MESSAGE(TimeZoneTransitionsOutput, Firebird::ThrowStatusExceptionWrapper,
+	(FB_TIMESTAMP_TZ, startTimestamp)
+	(FB_TIMESTAMP_TZ, endTimestamp)
+	(FB_SMALLINT, zoneOffset)
+	(FB_SMALLINT, dstOffset)
+	(FB_SMALLINT, effectiveOffset)
+);
+
+class TimeZoneTransitionsResultSet :
+	public Firebird::DisposeIface<
+			Firebird::IExternalResultSetImpl<TimeZoneTransitionsResultSet, Firebird::ThrowStatusExceptionWrapper> >
+{
+public:
+	TimeZoneTransitionsResultSet(Firebird::ThrowStatusExceptionWrapper* status, Firebird::IExternalContext* context,
+		void* inMsg, void* outMsg);
+
+public:
+	void dispose() override
+	{
+		delete this;
+	}
+
+public:
+	FB_BOOLEAN fetch(Firebird::ThrowStatusExceptionWrapper* status) override;
+
+private:
+	TimeZoneTransitionsOutput::Type* out;
+	Firebird::AutoPtr<Firebird::TimeZoneRuleIterator> iterator;
+};
+
+class TimeZoneTransitionsProcedure :
+	public Firebird::DisposeIface<
+			Firebird::IExternalProcedureImpl<TimeZoneTransitionsProcedure, Firebird::ThrowStatusExceptionWrapper> >
+{
+public:
+	TimeZoneTransitionsProcedure(Firebird::ThrowStatusExceptionWrapper* status,
+		Firebird::IMetadataBuilder* inBuilder, Firebird::IMetadataBuilder* outBuilder)
+	{
+		TimeZoneTransitionsInput::setup(status, inBuilder);
+		TimeZoneTransitionsOutput::setup(status, outBuilder);
+	}
+
+public:
+	void dispose() override
+	{
+		delete this;
+	}
+
+public:
+	void getCharSet(Firebird::ThrowStatusExceptionWrapper* status, Firebird::IExternalContext* context,
+		char* name, unsigned nameSize) override
+	{
+		strncpy(name, "UTF8", nameSize);
+	}
+
+	Firebird::IExternalResultSet* open(Firebird::ThrowStatusExceptionWrapper* status,
+		Firebird::IExternalContext* context, void* inMsg, void* outMsg) override
+	{
+		return FB_NEW TimeZoneTransitionsResultSet(status, context, inMsg, outMsg);
+	}
+};
+
+
+FB_MESSAGE(TimeZoneDatabaseVersionInput, Firebird::ThrowStatusExceptionWrapper,
+);
+
+FB_MESSAGE(TimeZoneDatabaseVersionOutput, Firebird::ThrowStatusExceptionWrapper,
+	(FB_INTL_VARCHAR(10, CS_ASCII), version)
+);
+
+class TimeZoneDatabaseVersionFunction :
+	public Firebird::DisposeIface<
+			Firebird::IExternalFunctionImpl<TimeZoneDatabaseVersionFunction, Firebird::ThrowStatusExceptionWrapper> >
+{
+public:
+	TimeZoneDatabaseVersionFunction(Firebird::ThrowStatusExceptionWrapper* status,
+		Firebird::IMetadataBuilder* inBuilder, Firebird::IMetadataBuilder* outBuilder)
+	{
+		TimeZoneDatabaseVersionInput::setup(status, inBuilder);
+		TimeZoneDatabaseVersionOutput::setup(status, outBuilder);
+	}
+
+public:
+	void dispose() override
+	{
+		delete this;
+	}
+
+public:
+	void getCharSet(Firebird::ThrowStatusExceptionWrapper* status, Firebird::IExternalContext* context,
+		char* name, unsigned nameSize) override
+	{
+		strncpy(name, "UTF8", nameSize);
+	}
+
+	void execute(Firebird::ThrowStatusExceptionWrapper* status,
+		Firebird::IExternalContext* context, void* inMsg, void* outMsg) override;
+};
 
 
 }	// namespace

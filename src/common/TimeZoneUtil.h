@@ -29,7 +29,9 @@
 
 #include <functional>
 #include "../common/classes/fb_string.h"
+#include "../common/classes/timestamp.h"
 #include "../common/cvt.h"
+#include "../common/unicode_util.h"
 
  // struct tm declaration
 #if defined(TIME_WITH_SYS_TIME)
@@ -57,11 +59,25 @@ public:
 	static const unsigned MAX_SIZE = MAX_LEN + 1;
 
 public:
+	static UDate ticksToIcuDate(SINT64 ticks)
+	{
+		return (ticks - (40587 * TimeStamp::ISC_TICKS_PER_DAY)) / 10;
+	}
+
+	static SINT64 icuDateToTicks(UDate icuDate)
+	{
+		return (SINT64(icuDate) * 10) + (40587 * TimeStamp::ISC_TICKS_PER_DAY);
+	}
+
 	static USHORT getSystemTimeZone();
 
-	static void iterateRegions(std::function<void  (USHORT, const char*)> func);
+	static void getDatabaseVersion(Firebird::string& str);
+
+	static void iterateRegions(std::function<void (USHORT, const char*)> func);
 
 	static USHORT parse(const char* str, unsigned strLen);
+	static USHORT parseRegion(const char* str, unsigned strLen);
+
 	static unsigned format(char* buffer, size_t bufferSize, USHORT timeZone);
 
 	static bool isValidOffset(int sign, unsigned tzh, unsigned tzm);
@@ -98,6 +114,30 @@ public:
 	static ISC_TIME_TZ cvtTimeStampToTimeTz(const ISC_TIMESTAMP& timeStamp, Callbacks* cb);
 
 	static ISC_TIMESTAMP_TZ cvtDateToTimeStampTz(const ISC_DATE& date, Callbacks* cb);
+};
+
+class TimeZoneRuleIterator
+{
+public:
+	TimeZoneRuleIterator(USHORT aId, ISC_TIMESTAMP_TZ& aFrom, ISC_TIMESTAMP_TZ& aTo);
+	~TimeZoneRuleIterator();
+
+public:
+	bool next();
+
+public:
+	ISC_TIMESTAMP_TZ startTimestamp;
+	ISC_TIMESTAMP_TZ endTimestamp;
+	SSHORT zoneOffset;
+	SSHORT dstOffset;
+
+private:
+	const USHORT id;
+	Jrd::UnicodeUtil::ConversionICU& icuLib;
+	SINT64 startTicks;
+	SINT64 toTicks;
+	UCalendar* icuCalendar;
+	UDate icuDate;
 };
 
 }	// namespace Firebird

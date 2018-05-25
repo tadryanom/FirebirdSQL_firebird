@@ -284,12 +284,16 @@ private:
 		if (!inModule)
 			return;
 
+		getEntryPoint("ucal_getTZDataVersion", inModule, ucalGetTZDataVersion);
 		getEntryPoint("ucal_open", inModule, ucalOpen);
 		getEntryPoint("ucal_close", inModule, ucalClose);
 		getEntryPoint("ucal_setMillis", inModule, ucalSetMillis);
 		getEntryPoint("ucal_get", inModule, ucalGet);
 		getEntryPoint("ucal_setDateTime", inModule, ucalSetDateTime);
 		getEntryPoint("ucal_getTimeZoneID", inModule, ucalGetTimeZoneID);
+
+		getEntryPoint("ucal_getNow", inModule, ucalGetNow);
+		getEntryPoint("ucal_getTimeZoneTransitionDate", inModule, ucalGetTimeZoneTransitionDate);
 
 #ifdef DEV_BUILD
 		getEntryPoint("ucal_openTimeZones", inModule, ucalOpenTimeZones);

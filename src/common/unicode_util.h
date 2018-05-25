@@ -123,6 +123,7 @@ public:
 
 		int32_t (U_EXPORT2* ustrcmp) (const UChar* s1, const UChar* s2);
 
+		const char* (U_EXPORT2* ucalGetTZDataVersion) (UErrorCode* status);
 		UCalendar* (U_EXPORT2* ucalOpen) (const UChar* zoneID, int32_t len, const char* locale, UCalendarType type,
 			UErrorCode* err);
 		void (U_EXPORT2* ucalClose) (UCalendar* cal);
@@ -132,6 +133,10 @@ public:
 			int32_t minute, int32_t second, UErrorCode* err);
 		int32_t (U_EXPORT2* ucalGetTimeZoneID) (const UCalendar* cal, UChar* result, int32_t resultLength,
 			UErrorCode *status);
+
+		UDate (U_EXPORT2* ucalGetNow) ();
+		UBool (U_EXPORT2* ucalGetTimeZoneTransitionDate) (const UCalendar* cal, UTimeZoneTransitionType type,
+			UDate* transition, UErrorCode* status);
 
 #ifdef DEV_BUILD
 		UEnumeration* (U_EXPORT2* ucalOpenTimeZones) (UErrorCode* ec);

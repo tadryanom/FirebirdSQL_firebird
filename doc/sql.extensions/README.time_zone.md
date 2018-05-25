@@ -221,17 +221,73 @@ select localtimestamp
   from rdb$database;
 ```
 
-# TODO: CURRENT_TIME and CURRENT_TIMESTAMP changes
+## TODO: CURRENT_TIME and CURRENT_TIMESTAMP changes
 
-## Virtual tables
-
-### `RDB$TIME_ZONES` table
+## Virtual table `RDB$TIME_ZONES`
 
 This virtual table lists time zones supported in the engine.
 
 Columns:
 - `RDB$TIME_ZONE_ID` type `INTEGER`
 - `RDB$TIME_ZONE_NAME` type `CHAR(63)`
+
+## Package `RDB$TIME_ZONE_UTIL`
+
+This package has time zone utility functions and procedures.
+
+### Function `DATABASE_VERSION`
+
+`RDB$TIME_ZONE_UTIL.DATABASE_VERSION` returns the time zone database version.
+
+Return type: `VARCHAR(10) CHARACTER SET ASCII`
+
+```
+select rdb$time_zone_util.database_version()
+  from rdb$database;
+```
+
+Returns:
+```
+DATABASE_VERSION
+================
+2017c
+```
+
+### Procedure `TRANSITIONS`
+
+`RDB$TIME_ZONE_UTIL.TRANSITIONS` returns the set of rules between the start and end timestamps.
+
+Input parameters:
+ - `TIME_ZONE_NAME` type `CHAR(63)`
+ - `FROM_TIMESTAMP` type `TIMESTAMP WITH TIME ZONE`
+ - `TO_TIMESTAMP` type `TIMESTAMP WITH TIME ZONE`
+
+ Output parameters:
+ - `START_TIMESTAMP` type `TIMESTAMP WITH TIME ZONE` - the transition' start timestamp
+ - `END_TIMESTAMP` type `TIMESTAMP WITH TIME ZONE` - the transition's end timestamp
+ - `ZONE_OFFSET` type `SMALLINT` - number of minutes related to the zone's offset
+ - `DST_OFFSET` type `SMALLINT` - number of minutes related to the zone's DST offset
+ - `EFFECTIVE_OFFSET` type `SMALLINT` - effective offset (`ZONE_OFFSET + DST_OFFSET`)
+
+```
+select *
+  from rdb$time_zone_util.transitions(
+    'America/Sao_Paulo',
+    timestamp '2017-01-01',
+    timestamp '2019-01-01');
+```
+
+Returns:
+
+```
+             START_TIMESTAMP                END_TIMESTAMP ZONE_OFFSET DST_OFFSET EFFECTIVE_OFFSET
+============================ ============================ =========== ========== ================
+2016-10-16 03:00:00.0000 GMT 2017-02-19 01:59:59.9999 GMT        -180         60             -120
+2017-02-19 02:00:00.0000 GMT 2017-10-15 02:59:59.9999 GMT        -180          0             -180
+2017-10-15 03:00:00.0000 GMT 2018-02-18 01:59:59.9999 GMT        -180         60             -120
+2018-02-18 02:00:00.0000 GMT 2018-10-21 02:59:59.9999 GMT        -180          0             -180
+2018-10-21 03:00:00.0000 GMT 2019-02-17 01:59:59.9999 GMT        -180         60             -120
+```
 
 
 # Appendix: time zone regions
