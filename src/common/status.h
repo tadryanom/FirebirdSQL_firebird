@@ -129,6 +129,43 @@ namespace Firebird
 	};
 
 	typedef LocalStatusWrapper<ThrowWrapper> ThrowLocalStatus;
+
+	class ThrowStatusExceptionWrapper : public ThrowStatusWrapper
+	{
+	public:
+		ThrowStatusExceptionWrapper(IStatus* aStatus)
+			: ThrowStatusWrapper(aStatus)
+		{
+		}
+
+	public:
+		static void catchException(IStatus* status)
+		{
+			if (!status)
+				return;
+
+			try
+			{
+				throw;
+			}
+			catch (const FbException& e)
+			{
+				status->setErrors(e.getStatus()->getErrors());
+			}
+			catch (const status_exception& e)
+			{
+				status->setErrors(e.value());
+			}
+			catch (...)
+			{
+				ISC_STATUS statusVector[] = {
+					isc_arg_gds, isc_random,
+					isc_arg_string, (ISC_STATUS) "Unrecognized C++ exception",
+					isc_arg_end};
+				status->setErrors(statusVector);
+			}
+		}
+	};
 }
 
 #endif // COMMON_STATUS_H
