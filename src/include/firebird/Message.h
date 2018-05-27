@@ -157,9 +157,17 @@
 	builder->setType(status, index, SQL_TIME);	\
 	builder->setLength(status, index, sizeof(FbTime));
 
+#define FB__META_FB_TIME_TZ	\
+	builder->setType(status, index, SQL_TIME_TZ);	\
+	builder->setLength(status, index, sizeof(FbTimeTz));
+
 #define FB__META_FB_TIMESTAMP	\
 	builder->setType(status, index, SQL_TIMESTAMP);	\
 	builder->setLength(status, index, sizeof(FbTimestamp));
+
+#define FB__META_FB_TIMESTAMP_TZ	\
+	builder->setType(status, index, SQL_TIMESTAMP_TZ);	\
+	builder->setLength(status, index, sizeof(FbTimestampTz));
 
 #define FB__META_FB_CHAR(len)	\
 	builder->setType(status, index, SQL_TEXT);	\
@@ -199,7 +207,9 @@
 #define FB__TYPE_FB_BOOLEAN						ISC_UCHAR
 #define FB__TYPE_FB_DATE						::Firebird::FbDate
 #define FB__TYPE_FB_TIME						::Firebird::FbTime
+#define FB__TYPE_FB_TIME_TZ						::Firebird::FbTimeTz
 #define FB__TYPE_FB_TIMESTAMP					::Firebird::FbTimestamp
+#define FB__TYPE_FB_TIMESTAMP_TZ				::Firebird::FbTimestampTz
 #define FB__TYPE_FB_CHAR(len)					::Firebird::FbChar<(len)>
 #define FB__TYPE_FB_VARCHAR(len)				::Firebird::FbVarChar<(len)>
 #define FB__TYPE_FB_INTL_CHAR(len, charSet)		::Firebird::FbChar<(len)>
@@ -331,12 +341,28 @@ public:
 	ISC_TIME value;
 };
 
+// This class has memory layout identical to ISC_TIME_TZ.
+class FbTimeTz
+{
+public:
+	FbTime utcTime;
+	ISC_USHORT timeZone;
+};
+
 // This class has memory layout identical to ISC_TIMESTAMP.
 class FbTimestamp
 {
 public:
 	FbDate date;
 	FbTime time;
+};
+
+// This class has memory layout identical to ISC_TIMESTAMP_TZ.
+class FbTimestampTz
+{
+public:
+	FbTimestamp utcTimestamp;
+	ISC_USHORT timeZone;
 };
 
 class MessageDesc
