@@ -151,23 +151,23 @@
 
 #define FB__META_FB_DATE	\
 	builder->setType(status, index, SQL_DATE);	\
-	builder->setLength(status, index, sizeof(FbDate));
+	builder->setLength(status, index, sizeof(::Firebird::FbDate));
 
 #define FB__META_FB_TIME	\
 	builder->setType(status, index, SQL_TIME);	\
-	builder->setLength(status, index, sizeof(FbTime));
+	builder->setLength(status, index, sizeof(::Firebird::FbTime));
 
 #define FB__META_FB_TIME_TZ	\
 	builder->setType(status, index, SQL_TIME_TZ);	\
-	builder->setLength(status, index, sizeof(FbTimeTz));
+	builder->setLength(status, index, sizeof(::Firebird::FbTimeTz));
 
 #define FB__META_FB_TIMESTAMP	\
 	builder->setType(status, index, SQL_TIMESTAMP);	\
-	builder->setLength(status, index, sizeof(FbTimestamp));
+	builder->setLength(status, index, sizeof(::Firebird::FbTimestamp));
 
 #define FB__META_FB_TIMESTAMP_TZ	\
 	builder->setType(status, index, SQL_TIMESTAMP_TZ);	\
-	builder->setLength(status, index, sizeof(FbTimestampTz));
+	builder->setLength(status, index, sizeof(::Firebird::FbTimestampTz));
 
 #define FB__META_FB_CHAR(len)	\
 	builder->setType(status, index, SQL_TEXT);	\
