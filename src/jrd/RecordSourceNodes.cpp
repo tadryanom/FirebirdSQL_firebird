@@ -19,7 +19,6 @@
  */
 
 #include "firebird.h"
-#include <initializer_list>
 #include "../jrd/align.h"
 #include "../jrd/RecordSourceNodes.h"
 #include "../jrd/DataTypeUtil.h"
