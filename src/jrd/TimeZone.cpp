@@ -10,7 +10,7 @@
  *  See the License for the specific language governing rights
  *  and limitations under the License.
  *
- *  The Original Code was created by Alex Peshkov
+ *  The Original Code was created by Adriano dos Santos Fernandes
  *  for the Firebird Open Source RDBMS project.
  *
  *  Copyright (c) 2018 Adriano dos Santos Fernandes <adrianosf@gmail.com>
