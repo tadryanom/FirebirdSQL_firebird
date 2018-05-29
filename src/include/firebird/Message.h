@@ -251,7 +251,7 @@ struct FbVarChar
 	{
 		length = strlen(s);
 		assert(length <= N);
-		memcpy(str, s, length);
+		memcpy(str, s, (length <= N ? length : N));
 	}
 };
 
