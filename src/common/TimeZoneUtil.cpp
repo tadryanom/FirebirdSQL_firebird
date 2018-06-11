@@ -237,6 +237,7 @@ namespace
 
 //-------------------------------------
 
+static const unsigned ONE_DAY = 24 * 60 - 1;	// used for offset encoding
 static InitInstance<TimeZoneStartup> timeZoneStartup;
 
 //-------------------------------------
@@ -843,7 +844,7 @@ static const TimeZoneDesc* getDesc(USHORT timeZone)
 // Returns true if the time zone is offset-based or false if region-based.
 static inline bool isOffset(USHORT timeZone)
 {
-	return timeZone <= TimeZoneUtil::ONE_DAY * 2;
+	return timeZone <= ONE_DAY * 2;
 }
 
 // Makes a time zone id from offsets.
@@ -852,7 +853,7 @@ static USHORT makeFromOffset(int sign, unsigned tzh, unsigned tzm)
 	if (!TimeZoneUtil::isValidOffset(sign, tzh, tzm))
 		status_exception::raise(Arg::Gds(isc_random) << "Invalid time zone offset");	//// TODO:
 
-	return (USHORT)((tzh * 60 + tzm) * sign + TimeZoneUtil::ONE_DAY);
+	return (USHORT)((tzh * 60 + tzm) * sign + ONE_DAY);
 }
 
 // Gets the displacement from a offset-based time zone id.
@@ -860,7 +861,7 @@ static inline SSHORT offsetZoneToDisplacement(USHORT timeZone)
 {
 	fb_assert(isOffset(timeZone));
 
-	return (SSHORT) (int(timeZone) - TimeZoneUtil::ONE_DAY);
+	return (SSHORT) (int(timeZone) - ONE_DAY);
 }
 
 // Parses a integer number.

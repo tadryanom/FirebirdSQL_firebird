@@ -52,7 +52,6 @@ class NoThrowTimeStamp;
 class TimeZoneUtil
 {
 public:
-	static const unsigned ONE_DAY = 24 * 60 - 1;	// used for offset encoding
 	static const USHORT GMT_ZONE = 65535;
 
 	static const unsigned MAX_LEN = 32;
@@ -61,12 +60,12 @@ public:
 public:
 	static UDate ticksToIcuDate(SINT64 ticks)
 	{
-		return (ticks - (40587 * TimeStamp::ISC_TICKS_PER_DAY)) / 10;
+		return (ticks - (TimeStamp::UNIX_DATE * TimeStamp::ISC_TICKS_PER_DAY)) / 10;
 	}
 
 	static SINT64 icuDateToTicks(UDate icuDate)
 	{
-		return (SINT64(icuDate) * 10) + (40587 * TimeStamp::ISC_TICKS_PER_DAY);
+		return (SINT64(icuDate) * 10) + (TimeStamp::UNIX_DATE * TimeStamp::ISC_TICKS_PER_DAY);
 	}
 
 	static USHORT getSystemTimeZone();
