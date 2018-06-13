@@ -248,6 +248,7 @@ void INI_format(const char* owner, const char* charset)
  **************************************/
 	thread_db* tdbb = JRD_get_thread_data();
 	Jrd::Attachment* attachment = tdbb->getAttachment();
+	Database* const dbb = tdbb->getDatabase();
 
 	fb_assert(owner && owner[0]);
 
@@ -399,6 +400,8 @@ void INI_format(const char* owner, const char* charset)
 	// Adjust the value of the hidden generator RDB$GENERATORS
 	DPM_gen_id(tdbb, 0, true, FB_NELEM(generators) - 1);
 
+	store_packages(tdbb, ownerName);
+
 	const size_t ownerNameLength = ownerName.length();
 	fb_assert(ownerNameLength <= MAX_UCHAR);
 
@@ -457,6 +460,14 @@ void INI_format(const char* owner, const char* charset)
 		 ++collation)
 	{
 		add_security_to_sys_obj(tdbb, ownerName, obj_collation, collation->name, length, buffer);
+	}
+
+	for (auto& systemPackage : SystemPackage::LIST)
+	{
+		if (systemPackage.odsVersion > ENCODE_ODS(dbb->dbb_ods_version, dbb->dbb_minor_version))
+			continue;
+
+		add_security_to_sys_obj(tdbb, ownerName, obj_package_header, systemPackage.name, length, buffer);
 	}
 
 	// Add default DDL security
@@ -534,8 +545,6 @@ void INI_format(const char* owner, const char* charset)
 
 		add_security_to_sys_rel(tdbb, ownerName, names[relfld[RFLD_R_NAME]], length, buffer);
 	}
-
-	store_packages(tdbb, ownerName);
 
 	// store system-defined triggers
 
@@ -1178,6 +1187,18 @@ static void add_security_to_sys_obj(thread_db* tdbb,
 		}
 		END_FOR
 	}
+	else if (obj_type == obj_package_header)
+	{
+		FOR(REQUEST_HANDLE handle) PKG IN RDB$PACKAGES
+			WITH PKG.RDB$PACKAGE_NAME EQ obj_name.c_str()
+		{
+			MODIFY PKG USING
+				PKG.RDB$SECURITY_CLASS.NULL = FALSE;
+				PAD(security_class.c_str(), PKG.RDB$SECURITY_CLASS);
+			END_MODIFY
+		}
+		END_FOR
+	}
 	else if (obj_type == obj_database)
 	{
 		FOR(REQUEST_HANDLE handle) DB IN RDB$DATABASE
@@ -1189,6 +1210,8 @@ static void add_security_to_sys_obj(thread_db* tdbb,
 		}
 		END_FOR
 	}
+	else
+		fb_assert(false);
 
 	handle.reset();
 
@@ -1655,8 +1678,6 @@ static void store_packages(thread_db* tdbb, const MetaName& owner)
 			PAD(owner.c_str(), PKG.RDB$OWNER_NAME);
 			PKG.RDB$SYSTEM_FLAG = RDB_system;
 			PKG.RDB$VALID_BODY_FLAG = TRUE;
-
-			//// FIXME: RDB$SECURITY_CLASS, RDB$SQL_SECURITY
 		}
 		END_STORE
 
@@ -1680,8 +1701,6 @@ static void store_packages(thread_db* tdbb, const MetaName& owner)
 				PRC.RDB$PRIVATE_FLAG = FALSE;
 				PRC.RDB$VALID_BLR = TRUE;
 				PAD("SYSTEM", PRC.RDB$ENGINE_NAME);
-
-				//// FIXME: RDB$SECURITY_CLASS, RDB$SQL_SECURITY
 			}
 			END_STORE
 
@@ -1731,8 +1750,6 @@ static void store_packages(thread_db* tdbb, const MetaName& owner)
 				FUN.RDB$PRIVATE_FLAG = FALSE;
 				FUN.RDB$VALID_BLR = TRUE;
 				PAD("SYSTEM", FUN.RDB$ENGINE_NAME);
-
-				//// FIXME: RDB$SECURITY_CLASS, RDB$SQL_SECURITY
 			}
 			END_STORE
 
