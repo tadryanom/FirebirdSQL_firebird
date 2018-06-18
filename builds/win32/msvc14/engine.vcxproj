@@ -144,6 +144,7 @@
     <ClCompile Include="..\..\..\src\jrd\svc_tab.cpp" />
     <ClCompile Include="..\..\..\src\jrd\SysFunction.cpp" />
     <ClCompile Include="..\..\..\src\jrd\TempSpace.cpp" />
+    <ClCompile Include="..\..\..\src\jrd\TimeZone.cpp" />
     <ClCompile Include="..\..\..\src\jrd\tpc.cpp" />
     <ClCompile Include="..\..\..\src\jrd\tra.cpp" />
     <ClCompile Include="..\..\..\src\jrd\trace\TraceCmdLine.cpp" />
@@ -318,6 +319,7 @@
     <ClInclude Include="..\..\..\src\jrd\svc_undoc.h" />
     <ClInclude Include="..\..\..\src\jrd\SysFunction.h" />
     <ClInclude Include="..\..\..\src\jrd\TempSpace.h" />
+    <ClInclude Include="..\..\..\src\jrd\TimeZone.h" />
     <ClInclude Include="..\..\..\src\jrd\tpc_proto.h" />
     <ClInclude Include="..\..\..\src\jrd\tra.h" />
     <ClInclude Include="..\..\..\src\jrd\trace\TraceConfigStorage.h" />

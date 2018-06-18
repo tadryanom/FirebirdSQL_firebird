@@ -551,6 +551,9 @@
     <ClInclude Include="..\..\..\src\common\classes\BlobWrapper.h">
       <Filter>headers</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\src\common\TimeZones.h">
+      <Filter>headers</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\src\common\TimeZoneUtil.h">
       <Filter>headers</Filter>
     </ClInclude>
