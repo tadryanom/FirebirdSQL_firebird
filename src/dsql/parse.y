@@ -589,6 +589,11 @@ using namespace Firebird;
 %token <metaNamePtr> REGR_SXY
 %token <metaNamePtr> REGR_SYY
 
+// tokens added for Firebird 3.0.4
+
+%token <metaNamePtr> LOCALTIME
+%token <metaNamePtr> LOCALTIMESTAMP
+
 // precedence declarations for expression evaluation
 
 %left	OR
@@ -3863,6 +3868,8 @@ keyword_or_column
 	| UPDATING
 	| VAR_SAMP
 	| VAR_POP
+	| LOCALTIME				// added in FB 3.0.4
+	| LOCALTIMESTAMP
 	;
 
 col_opt
@@ -6575,8 +6582,34 @@ datetime_value_expression
 
 			$$ = newNode<CurrentTimeNode>($2);
 		}
+	| LOCALTIME time_precision_opt
+		{
+			if (client_dialect < SQL_DIALECT_V6_TRANSITION)
+			{
+				ERRD_post(Arg::Gds(isc_sqlerr) << Arg::Num(-104) <<
+						  Arg::Gds(isc_sql_dialect_datatype_unsupport) << Arg::Num(client_dialect) <<
+						  												  Arg::Str("TIME"));
+			}
+
+			if (db_dialect < SQL_DIALECT_V6_TRANSITION)
+			{
+				ERRD_post(Arg::Gds(isc_sqlerr) << Arg::Num(-104) <<
+						  Arg::Gds(isc_sql_db_dialect_dtype_unsupport) << Arg::Num(db_dialect) <<
+						  												  Arg::Str("TIME"));
+			}
+
+			CurrentTimeNode* node = newNode<CurrentTimeNode>($2);
+			node->dsqlLocal = true;
+			$$ = node;
+		}
 	| CURRENT_TIMESTAMP timestamp_precision_opt
 		{ $$ = newNode<CurrentTimeStampNode>($2); }
+	| LOCALTIMESTAMP timestamp_precision_opt
+		{
+			CurrentTimeStampNode* node = newNode<CurrentTimeStampNode>($2);
+			node->dsqlLocal = true;
+			$$ = node;
+		}
 	;
 
 %type <uintVal>	time_precision_opt

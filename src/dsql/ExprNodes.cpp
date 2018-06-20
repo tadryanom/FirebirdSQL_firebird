@@ -3460,14 +3460,15 @@ dsc* CurrentDateNode::execute(thread_db* /*tdbb*/, jrd_req* request) const
 
 static RegisterNode<CurrentTimeNode> regCurrentTimeNode(blr_current_time);
 static RegisterNode<CurrentTimeNode> regCurrentTimeNode2(blr_current_time2);
+static RegisterNode<CurrentTimeNode> regCurrentTimeNode3(blr_local_time);
 
 DmlNode* CurrentTimeNode::parse(thread_db* /*tdbb*/, MemoryPool& pool, CompilerScratch* csb, const UCHAR blrOp)
 {
 	unsigned precision = DEFAULT_TIME_PRECISION;
 
-	fb_assert(blrOp == blr_current_time || blrOp == blr_current_time2);
+	fb_assert(blrOp == blr_current_time || blrOp == blr_current_time2 || blrOp == blr_local_time);
 
-	if (blrOp == blr_current_time2)
+	if (blrOp == blr_current_time2 || blrOp == blr_local_time)
 	{
 		precision = csb->csb_blr_reader.getByte();
 
@@ -3489,12 +3490,17 @@ string CurrentTimeNode::internalPrint(NodePrinter& printer) const
 
 void CurrentTimeNode::setParameterName(dsql_par* parameter) const
 {
-	parameter->par_name = parameter->par_alias = "CURRENT_TIME";
+	parameter->par_name = parameter->par_alias = dsqlLocal ? "LOCALTIME" : "CURRENT_TIME";
 }
 
 void CurrentTimeNode::genBlr(DsqlCompilerScratch* dsqlScratch)
 {
-	if (precision == DEFAULT_TIME_PRECISION)
+	if (dsqlLocal)
+	{
+		dsqlScratch->appendUChar(blr_local_time);
+		dsqlScratch->appendUChar(precision);
+	}
+	else if (precision == DEFAULT_TIME_PRECISION)
 		dsqlScratch->appendUChar(blr_current_time);
 	else
 	{
@@ -3572,15 +3578,16 @@ dsc* CurrentTimeNode::execute(thread_db* /*tdbb*/, jrd_req* request) const
 
 static RegisterNode<CurrentTimeStampNode> regCurrentTimeStampNode(blr_current_timestamp);
 static RegisterNode<CurrentTimeStampNode> regCurrentTimeStampNode2(blr_current_timestamp2);
+static RegisterNode<CurrentTimeStampNode> regCurrentTimeStampNode3(blr_local_timestamp);
 
 DmlNode* CurrentTimeStampNode::parse(thread_db* /*tdbb*/, MemoryPool& pool, CompilerScratch* csb,
 	const UCHAR blrOp)
 {
 	unsigned precision = DEFAULT_TIMESTAMP_PRECISION;
 
-	fb_assert(blrOp == blr_current_timestamp || blrOp == blr_current_timestamp2);
+	fb_assert(blrOp == blr_current_timestamp || blrOp == blr_current_timestamp2 || blrOp == blr_local_timestamp);
 
-	if (blrOp == blr_current_timestamp2)
+	if (blrOp == blr_current_timestamp2 || blrOp == blr_local_timestamp)
 	{
 		precision = csb->csb_blr_reader.getByte();
 
@@ -3602,12 +3609,17 @@ string CurrentTimeStampNode::internalPrint(NodePrinter& printer) const
 
 void CurrentTimeStampNode::setParameterName(dsql_par* parameter) const
 {
-	parameter->par_name = parameter->par_alias = "CURRENT_TIMESTAMP";
+	parameter->par_name = parameter->par_alias = dsqlLocal ? "LOCALTIMESTAMP" : "CURRENT_TIMESTAMP";
 }
 
 void CurrentTimeStampNode::genBlr(DsqlCompilerScratch* dsqlScratch)
 {
-	if (precision == DEFAULT_TIMESTAMP_PRECISION)
+	if (dsqlLocal)
+	{
+		dsqlScratch->appendUChar(blr_local_timestamp);
+		dsqlScratch->appendUChar(precision);
+	}
+	else if (precision == DEFAULT_TIMESTAMP_PRECISION)
 		dsqlScratch->appendUChar(blr_current_timestamp);
 	else
 	{
