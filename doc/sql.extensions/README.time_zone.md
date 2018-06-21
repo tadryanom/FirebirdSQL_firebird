@@ -221,7 +221,11 @@ select localtimestamp
   from rdb$database;
 ```
 
-## TODO: CURRENT_TIME and CURRENT_TIMESTAMP changes
+# Changes in `CURRENT_TIME` and `CURRENT_TIMESTAMP`
+
+In version 4.0, `CURRENT_TIME` and `CURRENT_TIMESTAMP` are changed to return `TIME WITH TIME ZONE` and `TIMESTAMP WITH TIME ZONE`, different than previous versions, that returned the types without time zone.
+
+To make transition easier, `LOCALTIME` and `LOCALTIMESTAMP` was added in v3.0.4, so applications can be adjusted in v3 and migrated to v4 without funcional changes.
 
 ## Virtual table `RDB$TIME_ZONES`
 
