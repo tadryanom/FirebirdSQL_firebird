@@ -649,6 +649,7 @@ using namespace Firebird;
 %left	UMINUS UPLUS
 %left	CONCATENATE
 %left	COLLATE
+%left	AT
 
 // Fix the dangling IF-THEN-ELSE problem
 %nonassoc THEN
@@ -7116,14 +7117,7 @@ value_special
 %type <valueExprNode> value_primary
 value_primary
 	: nonparenthesized_value
-	| '(' value_primary ')'					{ $$ = $2; }
-	| value_primary AT time_zone_specifier	{ $$ = newNode<AtNode>($1, $3); }
-	;
-
-%type <valueExprNode> time_zone_specifier
-time_zone_specifier
-	: LOCAL						{ $$ = NULL; }
-	| TIME ZONE value_primary	{ $$ = $3; }
+	| '(' value_primary ')'							{ $$ = $2; }
 	;
 
 // Matches definition of <simple value specification> in SQL standard
@@ -7161,6 +7155,10 @@ nonparenthesized_value
 		{ $$ = newNode<ConcatenateNode>($1, $3); }
 	| value_special COLLATE symbol_collation_name
 		{ $$ = newNode<CollateNode>($1, *$3); }
+	| value_special AT LOCAL %prec AT
+		{ $$ = newNode<AtNode>($1, nullptr); }
+	| value_special AT TIME ZONE value_special %prec AT
+		{ $$ = newNode<AtNode>($1, $5); }
 	| value_special '-' value_special
 		{ $$ = newNode<ArithmeticNode>(blr_subtract, (client_dialect < SQL_DIALECT_V6_TRANSITION), $1, $3); }
 	| value_special '*' value_special
