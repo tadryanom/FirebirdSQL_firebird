@@ -8194,7 +8194,7 @@ const TextCode* getCodeByText(const MetaName& text, const TextCode* textCode, un
 //--------------------
 
 
-SetRoundNode::SetRoundNode(MemoryPool& pool, Firebird::MetaName* name)
+SetDecFloatRoundNode::SetDecFloatRoundNode(MemoryPool& pool, Firebird::MetaName* name)
 	: SessionManagementNode(pool)
 {
 	fb_assert(name);
@@ -8204,7 +8204,7 @@ SetRoundNode::SetRoundNode(MemoryPool& pool, Firebird::MetaName* name)
 	rndMode = mode->val;
 }
 
-void SetRoundNode::execute(thread_db* tdbb, dsql_req* /*request*/, jrd_tra** /*traHandle*/) const
+void SetDecFloatRoundNode::execute(thread_db* tdbb, dsql_req* /*request*/, jrd_tra** /*traHandle*/) const
 {
 	SET_TDBB(tdbb);
 	Attachment* const attachment = tdbb->getAttachment();
@@ -8215,7 +8215,7 @@ void SetRoundNode::execute(thread_db* tdbb, dsql_req* /*request*/, jrd_tra** /*t
 //--------------------
 
 
-void SetTrapsNode::trap(Firebird::MetaName* name)
+void SetDecFloatTrapsNode::trap(Firebird::MetaName* name)
 {
 	fb_assert(name);
 	const TextCode* trap = getCodeByText(*name, ieeeTraps, FB_TRAPS_OFFSET);
@@ -8224,7 +8224,7 @@ void SetTrapsNode::trap(Firebird::MetaName* name)
 	traps |= trap->val;
 }
 
-void SetTrapsNode::execute(thread_db* tdbb, dsql_req* /*request*/, jrd_tra** /*traHandle*/) const
+void SetDecFloatTrapsNode::execute(thread_db* tdbb, dsql_req* /*request*/, jrd_tra** /*traHandle*/) const
 {
 	SET_TDBB(tdbb);
 	Attachment* const attachment = tdbb->getAttachment();
@@ -8235,7 +8235,7 @@ void SetTrapsNode::execute(thread_db* tdbb, dsql_req* /*request*/, jrd_tra** /*t
 //--------------------
 
 
-void SetBindNode::execute(thread_db* tdbb, dsql_req* /*request*/, jrd_tra** /*traHandle*/) const
+void SetDecFloatBindNode::execute(thread_db* tdbb, dsql_req* /*request*/, jrd_tra** /*traHandle*/) const
 {
 	SET_TDBB(tdbb);
 	Attachment* const attachment = tdbb->getAttachment();

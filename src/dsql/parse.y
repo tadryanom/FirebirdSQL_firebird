@@ -783,9 +783,9 @@ using namespace Firebird;
 	Jrd::SetRoleNode* setRoleNode;
 	Jrd::SetSessionNode* setSessionNode;
 	Jrd::CreateAlterRoleNode* createAlterRoleNode;
-	Jrd::SetRoundNode* setRoundNode;
-	Jrd::SetTrapsNode* setTrapsNode;
-	Jrd::SetBindNode* setBindNode;
+	Jrd::SetDecFloatRoundNode* setDecFloatRoundNode;
+	Jrd::SetDecFloatTrapsNode* setDecFloatTrapsNode;
+	Jrd::SetDecFloatBindNode* setDecFloatBindNode;
 	Jrd::SessionResetNode* sessionResetNode;
 }
 
@@ -844,9 +844,9 @@ tra_statement
 
 %type <mngNode> mng_statement
 mng_statement
-	: set_round									{ $$ = $1; }
-	| set_traps									{ $$ = $1; }
-	| set_bind									{ $$ = $1; }
+	: set_decfloat_round						{ $$ = $1; }
+	| set_decfloat_traps						{ $$ = $1; }
+	| set_decfloat_bind							{ $$ = $1; }
 	| session_statement							{ $$ = $1; }
 	| set_role									{ $$ = $1; }
 	| session_reset								{ $$ = $1; }
@@ -5170,66 +5170,66 @@ set_role
 		{ $$ = newNode<SetRoleNode>(); }
 	;
 
-%type <setRoundNode> set_round
-set_round
+%type <setDecFloatRoundNode> set_decfloat_round
+set_decfloat_round
 	: SET DECFLOAT ROUND valid_symbol_name
-		{ $$ = newNode<SetRoundNode>($4); }
+		{ $$ = newNode<SetDecFloatRoundNode>($4); }
 	;
 
-%type <setTrapsNode> set_traps
-set_traps
+%type <setDecFloatTrapsNode> set_decfloat_traps
+set_decfloat_traps
 	: SET DECFLOAT TRAPS TO
-			{ $$ = newNode<SetTrapsNode>(); }
-		traps_list_opt($5)
+			{ $$ = newNode<SetDecFloatTrapsNode>(); }
+		decfloat_traps_list_opt($5)
 			{ $$ = $5; }
 	;
 
-%type <setBindNode> set_bind
-set_bind
+%type <setDecFloatBindNode> set_decfloat_bind
+set_decfloat_bind
 	: SET DECFLOAT BIND
-			{ $$ = newNode<SetBindNode>(); }
+			{ $$ = newNode<SetDecFloatBindNode>(); }
 		bind_clause($4)
 			{ $$ = $4; }
 	;
 
-%type traps_list_opt(<setTrapsNode>)
-traps_list_opt($setTrapsNode)
+%type decfloat_traps_list_opt(<setDecFloatTrapsNode>)
+decfloat_traps_list_opt($setDecFloatTrapsNode)
 	: // nothing
-	| traps_list($setTrapsNode)
+	| decfloat_traps_list($setDecFloatTrapsNode)
 	;
 
-%type traps_list(<setTrapsNode>)
-traps_list($setTrapsNode)
-	: trap($setTrapsNode)
-	| traps_list ',' trap($setTrapsNode)
+%type decfloat_traps_list(<setDecFloatTrapsNode>)
+decfloat_traps_list($setDecFloatTrapsNode)
+	: decfloat_trap($setDecFloatTrapsNode)
+	| decfloat_traps_list ',' decfloat_trap($setDecFloatTrapsNode)
 	;
 
-%type trap(<setTrapsNode>)
-trap($setTrapsNode)
+%type decfloat_trap(<setDecFloatTrapsNode>)
+decfloat_trap($setDecFloatTrapsNode)
 	: valid_symbol_name
-		{ $setTrapsNode->trap($1); }
+		{ $setDecFloatTrapsNode->trap($1); }
 	;
 
-%type bind_clause(<setBindNode>)
-bind_clause($setBindNode)
+%type bind_clause(<setDecFloatBindNode>)
+bind_clause($setDecFloatBindNode)
 	: NATIVE
 		// do nothing
 	| character_keyword
-		{ $setBindNode->bind.bind = DecimalBinding::DEC_TEXT; }
+		{ $setDecFloatBindNode->bind.bind = DecimalBinding::DEC_TEXT; }
 	| DOUBLE PRECISION
-		{ $setBindNode->bind.bind = DecimalBinding::DEC_DOUBLE; }
-	| BIGINT scale_clause($setBindNode)
-		{ $setBindNode->bind.bind = DecimalBinding::DEC_NUMERIC; }
+		{ $setDecFloatBindNode->bind.bind = DecimalBinding::DEC_DOUBLE; }
+	| BIGINT decfloat_scale_clause($setDecFloatBindNode)
+		{ $setDecFloatBindNode->bind.bind = DecimalBinding::DEC_NUMERIC; }
 	;
 
-%type scale_clause(<setBindNode>)
-scale_clause($setBindNode)
+%type decfloat_scale_clause(<setDecFloatBindNode>)
+decfloat_scale_clause($setDecFloatBindNode)
 	: // nothing
 	| ',' signed_long_integer
 		{
 			if ($2 > 18 || $2 < 0)
 				yyabandon(YYPOSNARG(2), -842, isc_scale_nogt);	// Scale must be between 0 and precision
-			$setBindNode->bind.numScale = -$2;
+			$setDecFloatBindNode->bind.numScale = -$2;
 		}
 
 %type <setSessionNode> session_statement
