@@ -181,7 +181,10 @@ $(GEN_ROOT)/Make.Version : $(SRC_ROOT)/misc/writeBuildNum.sh
 #
 
 external:
+ifeq ($(CLIENT_ONLY_FLG),N)
 	CC="$(CC)" CFLAGS="$(CFLAGS)" AR="$(AR)" $(MAKE) -C $(ROOT)/extern/btyacc
+endif
+
 	CXX="$(CXX)" CXXFLAGS="$(CXXFLAGS)" $(MAKE) -C $(ROOT)/extern/cloop TARGET=release WITH_FPC=0 BUILD_DIR=$(TMP_ROOT)/cloop OUT_DIR=$(GEN_ROOT)/$(TARGET)/cloop core
 
 	CC="$(CC)" CFLAGS="$(CFLAGS)" AR="$(AR)" $(MAKE) -C $(ROOT)/extern/decNumber
@@ -192,12 +195,14 @@ ifeq ($(ABSEIL_BUILD_FLG),Y)
 	ln -sf $(ROOT)/extern/int128/absl/numeric/libi128.a $(LIB)
 endif
 
+ifeq ($(CLIENT_ONLY_FLG),N)
 ifeq ($(RE2_BUILD_FLG),Y)
 	CXX="$(CXX)" CXXFLAGS="$(CXXFLAGS) -O3 -g -fPIC" AR="$(AR)" $(MAKE) -C $(ROOT)/extern/re2
 	ln -sf $(ROOT)/extern/re2/obj/libre2.a $(LIB)
 endif
 
 	$(MAKE) libcds
+endif
 
 ifeq ($(TOMMATH_BUILD_FLG),Y)
 	CC="$(CC)" CFLAGS="$(CFLAGS)" AR="$(AR)" $(MAKE) -C $(ROOT)/extern/libtommath -f makefile.shared GCC="$(CC)"
@@ -223,9 +228,11 @@ else
 endif
 endif
 
+ifeq ($(CLIENT_ONLY_FLG),N)
 ifeq ($(STD_EDITLINE),false)
 ifeq ($(EDITLINE_FLG),Y)
 	CC="$(CC)" CFLAGS="$(CFLAGS)" AR="$(AR)" $(MAKE) -f $(GEN_ROOT)/Makefile.extern.editline
+endif
 endif
 endif
 
@@ -317,8 +324,16 @@ master_process:
 	$(MAKE) export_lists
 	$(MAKE) external
 	$(MAKE) updateCloopInterfaces
-	$(MAKE) boot
+	$(MAKE) rest
 	$(MAKE) yvalve
+ifeq ($(CLIENT_ONLY_FLG),Y)
+ifeq ($(WITH_TOMCRYPT),Y)
+	$(MAKE) chacha
+endif
+	$(MAKE) include_generic
+endif
+ifeq ($(CLIENT_ONLY_FLG),N)
+	$(MAKE) boot
 	$(MAKE) engine
 	$(MAKE) fbintl
 	$(MAKE) utilities
@@ -331,7 +346,7 @@ master_process:
 	(cd $(BIN); $(LN) $(notdir $(GPRE)) $(notdir $(GPRE_CURRENT)))
 	$(MAKE) plugins
 	$(MAKE) examples
-	$(MAKE) rest
+endif
 
 
 cross_process:
@@ -344,6 +359,7 @@ cross1:
 	$(MAKE) export_lists
 	$(MAKE) external
 	$(MAKE) updateCloopInterfaces
+ifeq ($(CLIENT_ONLY_FLG),N)
 	$(MAKE) boot
 	$(MAKE) yvalve
 	$(MAKE) engine
@@ -358,26 +374,39 @@ cross1:
 	(cd $(BIN); $(LN) $(notdir $(RUN_GPRE)) $(notdir $(GPRE_CURRENT)))
 	$(MAKE) include_generic
 	$(MAKE) -f Makefile.examples -C $(GEN_ROOT)/examples/
+endif
 
 cross2:
 	ln -sf $(SRC_ROOT)/include/cross/$(CROSS_CONFIG) $(SRC_ROOT)/include/gen/autoconfig.h
 	$(MAKE) prerequisites
 	$(MAKE) tommath
+ifeq ($(WITH_TOMCRYPT),Y)
 	$(MAKE) LTCSOURCE=-DLTC_SOURCE tomcrypt
+endif
+ifeq ($(CLIENT_ONLY_FLG),N)
 	$(MAKE) re2
+	$(MAKE) libcds
+endif
 	CC="$(CC)" CFLAGS="$(CFLAGS)" AR="$(AR)" $(MAKE) -C $(ROOT)/extern/decNumber
 	ln -sf $(ROOT)/extern/decNumber/libdecFloat$(CROSS).a $(LIB)
 	CXX="$(CXX)" CXXFLAGS="$(CXXFLAGS)" $(MAKE) -C $(ROOT)/extern/int128/absl/numeric
 	ln -sf $(ROOT)/extern/int128/absl/numeric/libi128$(CROSS).a $(LIB)
-	$(MAKE) libcds
+	$(MAKE) cross_rest
 	$(MAKE) yvalve
+ifeq ($(CLIENT_ONLY_FLG),Y)
+ifeq ($(WITH_TOMCRYPT),Y)
+	$(MAKE) chacha
+endif
+	$(MAKE) include_generic
+endif
+ifeq ($(CLIENT_ONLY_FLG),N)
 	$(MAKE) engine
 	$(MAKE) fbintl
 	$(MAKE) utilities
 	$(MAKE) $(GPRE)
 	$(MAKE) plugins
 	$(MAKE) -f Makefile.plugins_examples
-	$(MAKE) cross_rest
+endif
 
 
 #___________________________________________________________________________
@@ -538,7 +567,7 @@ $(FBTRACEMGR):	$(FBTRACEMGR_Objects) $(COMMON_LIB)
 gbak:			$(GBAK)
 
 $(GBAK):		$(GBAK_Objects) $(COMMON_LIB)
-	$(EXE_LINK) $(EXE_LINK_OPTIONS) $^ -o $@ $(FIREBIRD_LIBRARY_LINK) $(LINK_LIBS)
+	$(EXE_LINK) $(EXE_LINK_OPTIONS) $^ -o $@ $(FIREBIRD_LIBRARY_LINK) $(LINK_LIBS) $(RE2LIB)
 
 gsplit:			$(GSPLIT)
 
@@ -606,7 +635,7 @@ $(UDR_PLUGIN):	$(UDRENG_Objects) $(COMMON_LIB)
 legacy_user_management:	$(LEGACY_USER_MANAGER)
 
 $(LEGACY_USER_MANAGER):	$(LEGACY_USERS_MANAGE_Objects) $(COMMON_LIB)
-	$(LINK_PLUGIN) $(call LIB_LINK_SONAME,$(notdir $@).0) -o $@ $^ $(LINK_PLUG_LIBS) $(FIREBIRD_LIBRARY_LINK)\
+	$(LINK_PLUGIN) $(call LIB_LINK_SONAME,$(notdir $@).0) -o $@ $^ $(LINK_PLUG_LIBS) $(RE2LIB) $(FIREBIRD_LIBRARY_LINK)\
  $(call LIB_LINK_DARWIN_INSTALL_NAME,plugins/libLegacy_UserManager.$(SHRLIB_EXT))
 
 chacha:	$(CHACHA)
@@ -630,7 +659,7 @@ $(PROFILER):	$(Profiler_Objects) $(COMMON_LIB)
 trace:	$(FBTRACE)
 
 $(FBTRACE):	$(FBTRACE_UTIL_Objects) $(COMMON_LIB)
-	$(LINK_TRACE) -o $@ $^ $(FIREBIRD_LIBRARY_LINK) $(LINK_TRACE_LIBS) $(call LIB_LINK_DARWIN_INSTALL_NAME,plugins/libfbtrace.$(SHRLIB_EXT))
+	$(LINK_TRACE) -o $@ $^ $(RE2LIB) $(FIREBIRD_LIBRARY_LINK) $(LINK_TRACE_LIBS) $(call LIB_LINK_DARWIN_INSTALL_NAME,plugins/libfbtrace.$(SHRLIB_EXT))
 
 auth_debug:	$(AUTH_DEBUGGER)
 

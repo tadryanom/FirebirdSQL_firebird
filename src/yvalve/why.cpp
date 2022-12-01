@@ -62,6 +62,8 @@
 #include "../common/classes/fb_tls.h"
 #include "../common/status.h"
 #include "../common/classes/InternalMessageBuffer.h"
+#include "../yvalve/array_proto.h"
+#include "../yvalve/blob_proto.h"
 #include "../yvalve/utl_proto.h"
 #include "../yvalve/why_proto.h"
 #include "../yvalve/MasterImplementation.h"
@@ -1584,6 +1586,50 @@ Firebird::ITransaction* handleToITransaction(CheckStatusWrapper* status, isc_tr_
 //-------------------------------------
 
 
+ISC_STATUS API_ROUTINE isc_array_lookup_bounds(ISC_STATUS* userStatus, FB_API_HANDLE* dbHandle, FB_API_HANDLE* traHandle,
+	const SCHAR* relationName, const SCHAR* fieldName, ISC_ARRAY_DESC* desc)
+{
+	StatusVector status(userStatus);
+	CheckStatusWrapper statusWrapper(&status);
+
+	try
+	{
+		RefPtr<YAttachment> attachment(translateHandle(attachments, dbHandle));
+		RefPtr<YTransaction> transaction(translateHandle(transactions, traHandle));
+
+		iscArrayLookupBoundsImpl(attachment, transaction, relationName, fieldName, desc);
+	}
+	catch (const Exception& e)
+	{
+		e.stuffException(&statusWrapper);
+	}
+
+	return status[1];
+}
+
+
+ISC_STATUS API_ROUTINE isc_array_lookup_desc(ISC_STATUS* userStatus, FB_API_HANDLE* dbHandle, FB_API_HANDLE* traHandle,
+	const SCHAR* relationName, const SCHAR* fieldName, ISC_ARRAY_DESC* desc)
+{
+	StatusVector status(userStatus);
+	CheckStatusWrapper statusWrapper(&status);
+
+	try
+	{
+		RefPtr<YAttachment> attachment(translateHandle(attachments, dbHandle));
+		RefPtr<YTransaction> transaction(translateHandle(transactions, traHandle));
+
+		iscArrayLookupDescImpl(attachment, transaction, relationName, fieldName, desc);
+	}
+	catch (const Exception& e)
+	{
+		e.stuffException(&statusWrapper);
+	}
+
+	return status[1];
+}
+
+
 // Attach a database through the first subsystem that recognizes it.
 ISC_STATUS API_ROUTINE isc_attach_database(ISC_STATUS* userStatus, SSHORT fileLength,
 	const TEXT* filename, isc_db_handle* publicHandle, SSHORT dpbLength, const SCHAR* dpb)
@@ -1635,6 +1681,31 @@ ISC_STATUS API_ROUTINE isc_blob_info(ISC_STATUS* userStatus, isc_blob_handle* bl
 
 		blob->getInfo(&statusWrapper, itemLength, reinterpret_cast<const UCHAR*>(items),
 			bufferLength, reinterpret_cast<UCHAR*>(buffer));
+	}
+	catch (const Exception& e)
+	{
+		e.stuffException(&statusWrapper);
+	}
+
+	return status[1];
+}
+
+
+// Lookup the blob subtype, character set and segment size information from the metadata,
+// given a relation/procedure name and column/parameter name.
+// It will fill in the information in the BLOB_DESC.
+ISC_STATUS API_ROUTINE isc_blob_lookup_desc(ISC_STATUS* userStatus, isc_db_handle* dbHandle, isc_tr_handle* traHandle,
+	const UCHAR* relationName, const UCHAR* fieldName, ISC_BLOB_DESC* desc, UCHAR* global)
+{
+	StatusVector status(userStatus);
+	CheckStatusWrapper statusWrapper(&status);
+
+	try
+	{
+		RefPtr<YAttachment> attachment(translateHandle(attachments, dbHandle));
+		RefPtr<YTransaction> transaction(translateHandle(transactions, traHandle));
+
+		iscBlobLookupDescImpl(attachment, transaction, relationName, fieldName, desc, global);
 	}
 	catch (const Exception& e)
 	{

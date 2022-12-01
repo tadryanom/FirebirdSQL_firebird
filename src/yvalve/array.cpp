@@ -1,6 +1,6 @@
 /*
  *	PROGRAM:	Interbase layered support library
- *	MODULE:		array.epp
+ *	MODULE:		array.cpp
  *	DESCRIPTION:	Dynamic array support
  *
  * The contents of this file are subject to the Interbase Public
@@ -33,18 +33,18 @@
  */
 
 #include "firebird.h"
+#include "firebird/Message.h"
 #include <string.h>
 #include <stdarg.h>
 #include "ibase.h"
 #include "../yvalve/array_proto.h"
 #include "../yvalve/gds_proto.h"
+#include "../yvalve/YObjects.h"
 #include "../common/StatusArg.h"
 #include "../jrd/constants.h"
 #include "../common/utils_proto.h"
 
 using namespace Firebird;
-
-DATABASE DB = STATIC FILENAME "yachts.lnk";
 
 const int array_desc_column_major = 1;	// Set for FORTRAN
 
@@ -62,8 +62,6 @@ static void adjust_length(ISC_ARRAY_DESC*);
 static void copy_exact_name (const char*, char*, SSHORT);
 static ISC_STATUS error(ISC_STATUS* status, const Arg::StatusVector& v);
 static ISC_STATUS gen_sdl(ISC_STATUS*, const ISC_ARRAY_DESC*, SSHORT*, UCHAR**, SSHORT*, bool);
-static ISC_STATUS lookup_desc(ISC_STATUS*, FB_API_HANDLE*, FB_API_HANDLE*, const SCHAR*,
-						const SCHAR*, ISC_ARRAY_DESC*, SCHAR*);
 static ISC_STATUS stuff_args(gen_t*, SSHORT, ...);
 static ISC_STATUS stuff_literal(gen_t*, SLONG);
 static ISC_STATUS stuff_string(gen_t*, UCHAR, const SCHAR*);
@@ -144,73 +142,117 @@ ISC_STATUS API_ROUTINE isc_array_get_slice(ISC_STATUS* status,
 }
 
 
-ISC_STATUS API_ROUTINE isc_array_lookup_bounds(ISC_STATUS* status,
-										   FB_API_HANDLE* db_handle,
-										   FB_API_HANDLE* trans_handle,
-										   const SCHAR* relation_name,
-										   const SCHAR* field_name,
-										   ISC_ARRAY_DESC* desc)
+void iscArrayLookupBoundsImpl(Why::YAttachment* attachment,
+	Why::YTransaction* transaction, const SCHAR* relationName, const SCHAR* fieldName, ISC_ARRAY_DESC* desc)
 {
-/**************************************
- *
- *	i s c _ a r r a y _ l o o k u p _ b o u n d s
- *
- **************************************
- *
- * Functional description
- *
- **************************************/
-	SCHAR global[MAX_SQL_IDENTIFIER_SIZE];
+	LocalStatus status;
+	CheckStatusWrapper statusWrapper(&status);
 
-	if (lookup_desc(status, db_handle, trans_handle, field_name, relation_name, desc, global))
-	{
-		return status[1];
-	}
-
-	ISC_STATUS_ARRAY isc_status = {0};
-	isc_db_handle DB = *db_handle;
-	isc_req_handle handle = 0;
+	iscArrayLookupDescImpl(attachment, transaction, relationName, fieldName, desc);
 
 	ISC_ARRAY_BOUND* tail = desc->array_desc_bounds;
 
-	FOR (REQUEST_HANDLE handle TRANSACTION_HANDLE *trans_handle)
-		X IN RDB$FIELD_DIMENSIONS
-		WITH X.RDB$FIELD_NAME EQ global
-		SORTED BY X.RDB$DIMENSION
-        tail->array_bound_lower = (SSHORT) X.RDB$LOWER_BOUND;
-	    tail->array_bound_upper = (SSHORT) X.RDB$UPPER_BOUND;
-        ++tail;
-	END_FOR
-    ON_ERROR
-		ISC_STATUS_ARRAY temp_status;
-		isc_release_request(temp_status, &handle);
-		fb_utils::copyStatus(status, ISC_STATUS_LENGTH, isc_status, ISC_STATUS_LENGTH);
-		return status[1];
-	END_ERROR;
+	constexpr auto sql = R"""(
+		select fd.rdb$lower_bound,
+		       fd.rdb$upper_bound
+		    from rdb$field_dimensions fd
+		    where fd.rdb$field_name = ?
+		    order by fd.dimension
+	)""";
 
-	isc_release_request(isc_status, &handle);
-	return status[1];
+	FB_MESSAGE(InputMessage, CheckStatusWrapper,
+		(FB_VARCHAR(MAX_SQL_IDENTIFIER_LEN * 4), fieldName)
+	) inputMessage(&statusWrapper, MasterInterfacePtr());
+	inputMessage.clear();
+
+	FB_MESSAGE(OutputMessage, CheckStatusWrapper,
+		(FB_INTEGER, lowerBound)
+		(FB_INTEGER, upperBound)
+	) outputMessage(&statusWrapper, MasterInterfacePtr());
+
+	inputMessage->fieldNameNull = FB_FALSE;
+	inputMessage->fieldName.set((const char*) fieldName);
+
+	auto resultSet = makeNoIncRef(attachment->openCursor(&statusWrapper, transaction, 0, sql,
+		SQL_DIALECT_CURRENT, inputMessage.getMetadata(), inputMessage.getData(),
+		outputMessage.getMetadata(), nullptr, 0));
+	status.check();
+
+	while (resultSet->fetchNext(&statusWrapper, outputMessage.getData()) == IStatus::RESULT_OK)
+	{
+		tail->array_bound_lower = outputMessage->lowerBoundNull ? 0 : outputMessage->lowerBound;
+		tail->array_bound_upper = outputMessage->upperBoundNull ? 0 : outputMessage->upperBound;
+		++tail;
+	}
+
+	status.check();
 }
 
 
-ISC_STATUS API_ROUTINE isc_array_lookup_desc(ISC_STATUS* status,
-										 FB_API_HANDLE* db_handle,
-										 FB_API_HANDLE* trans_handle,
-										 const SCHAR* relation_name,
-										 const SCHAR* field_name,
-										 ISC_ARRAY_DESC* desc)
+void iscArrayLookupDescImpl(Why::YAttachment* attachment,
+	Why::YTransaction* transaction, const SCHAR* relationName, const SCHAR* fieldName, ISC_ARRAY_DESC* desc)
 {
-/**************************************
- *
- *	i s c _ a r r a y _ l o o k u p _ d e s c
- *
- **************************************
- *
- * Functional description
- *
- **************************************/
+	LocalStatus status;
+	CheckStatusWrapper statusWrapper(&status);
 
-	return lookup_desc(status, db_handle, trans_handle, field_name, relation_name, desc, NULL);
+	copy_exact_name(fieldName, desc->array_desc_field_name, sizeof(desc->array_desc_field_name));
+	copy_exact_name(relationName, desc->array_desc_relation_name, sizeof(desc->array_desc_relation_name));
+
+	desc->array_desc_flags = 0;
+
+	constexpr auto sql = R"""(
+		select f.rdb$field_type,
+		       f.rdb$field_scale,
+		       f.rdb$field_length,
+		       f.rdb$dimensions
+		    from rdb$relation_fields rf
+		    join rdb$fields f
+		      on f.rdb$field_name = rf.rdb$field_source
+		    where rf.rdb$relation_name = ? and
+		          rf.rdb$field_name = ?
+	)""";
+
+	FB_MESSAGE(InputMessage, CheckStatusWrapper,
+		(FB_VARCHAR(MAX_SQL_IDENTIFIER_LEN * 4), relationName)
+		(FB_VARCHAR(MAX_SQL_IDENTIFIER_LEN * 4), fieldName)
+	) inputMessage(&statusWrapper, MasterInterfacePtr());
+	inputMessage.clear();
+
+	FB_MESSAGE(OutputMessage, CheckStatusWrapper,
+		(FB_INTEGER, fieldType)
+		(FB_INTEGER, fieldScale)
+		(FB_INTEGER, fieldLength)
+		(FB_INTEGER, dimensions)
+	) outputMessage(&statusWrapper, MasterInterfacePtr());
+
+	inputMessage->relationNameNull = FB_FALSE;
+	inputMessage->relationName.set((const char*) relationName);
+
+	inputMessage->fieldNameNull = FB_FALSE;
+	inputMessage->fieldName.set((const char*) fieldName);
+
+	auto resultSet = makeNoIncRef(attachment->openCursor(&statusWrapper, transaction, 0, sql,
+		SQL_DIALECT_CURRENT, inputMessage.getMetadata(), inputMessage.getData(),
+		outputMessage.getMetadata(), nullptr, 0));
+	status.check();
+
+	if (resultSet->fetchNext(&statusWrapper, outputMessage.getData()) == IStatus::RESULT_OK)
+	{
+		desc->array_desc_dtype = outputMessage->fieldTypeNull ? 0 : outputMessage->fieldType;
+		desc->array_desc_scale = outputMessage->fieldScaleNull ? 0 : outputMessage->fieldScale;
+		desc->array_desc_length = outputMessage->fieldLengthNull ? 0 : outputMessage->fieldLength;
+
+		adjust_length(desc);
+		desc->array_desc_dimensions = outputMessage->dimensionsNull ? 0 : outputMessage->dimensions;
+
+		return;
+	}
+
+	status.check();
+
+	(Arg::Gds(isc_fldnotdef) <<
+		Arg::Str(desc->array_desc_field_name) <<
+		Arg::Str(desc->array_desc_relation_name)).raise();
 }
 
 
@@ -515,67 +557,6 @@ static ISC_STATUS gen_sdl(ISC_STATUS* status,
 	return error(status, Arg::Gds(FB_SUCCESS));
 }
 
-
-
-static ISC_STATUS lookup_desc(ISC_STATUS* status,
-						  FB_API_HANDLE* db_handle,
-						  FB_API_HANDLE* trans_handle,
-						  const SCHAR* field_name,
-						  const SCHAR* relation_name,
-						  ISC_ARRAY_DESC* desc,
-						  SCHAR* global)
-{
-/**************************************
- *
- *	l o o k u p _ d e s c
- *
- **************************************
- *
- * Functional description
- *
- **************************************/
-	ISC_STATUS_ARRAY isc_status = {0};
-	isc_db_handle DB = *db_handle;
-	isc_req_handle handle = 0;
-
-    copy_exact_name(field_name, desc->array_desc_field_name, sizeof(desc->array_desc_field_name));
-    copy_exact_name(relation_name, desc->array_desc_relation_name, sizeof(desc->array_desc_relation_name));
-
-	desc->array_desc_flags = 0;
-
-	bool flag = false;
-
-	FOR (REQUEST_HANDLE handle TRANSACTION_HANDLE *trans_handle)
-		X IN RDB$RELATION_FIELDS CROSS Y IN RDB$FIELDS
-		WITH X.RDB$FIELD_SOURCE EQ Y.RDB$FIELD_NAME AND
-		X.RDB$RELATION_NAME EQ desc->array_desc_relation_name AND
-		X.RDB$FIELD_NAME EQ desc->array_desc_field_name
-		flag = true;
-	    desc->array_desc_dtype = (UCHAR)Y.RDB$FIELD_TYPE;
-        desc->array_desc_scale = (SCHAR)Y.RDB$FIELD_SCALE;
-        desc->array_desc_length = Y.RDB$FIELD_LENGTH;
-        adjust_length(desc);
-        desc->array_desc_dimensions = Y.RDB$DIMENSIONS;
-        if (global) {
-            copy_exact_name (Y.RDB$FIELD_NAME, global, sizeof(Y.RDB$FIELD_NAME));
-        }
-
-	END_FOR
-    ON_ERROR
-		ISC_STATUS_ARRAY temp_status;
-		isc_release_request(temp_status, &handle);
-		fb_utils::copyStatus(status, ISC_STATUS_LENGTH, isc_status, ISC_STATUS_LENGTH);
-		return status[1];
-	END_ERROR;
-
-    isc_release_request(isc_status, &handle);
-
-	if (!flag)
-		return error(status, Arg::Gds(isc_fldnotdef) << Arg::Str(desc->array_desc_field_name) <<
-														Arg::Str(desc->array_desc_relation_name));
-
-	return error(status, Arg::Gds(FB_SUCCESS));
-}
 
 
 static ISC_STATUS stuff_args(gen_t* gen, SSHORT count, ...)
