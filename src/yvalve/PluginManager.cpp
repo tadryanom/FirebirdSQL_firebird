@@ -765,6 +765,10 @@ namespace
 
 			plugConfigFile = curModule;
 			changeExtension(plugConfigFile, "conf");
+
+			PathUtils::fixupSeparators(curModule);
+			PathUtils::fixupSeparators(regName);
+			PathUtils::fixupSeparators(plugConfigFile);
 		}
 	};
 
