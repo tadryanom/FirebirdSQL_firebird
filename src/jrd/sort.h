@@ -374,7 +374,7 @@ public:
 		m_parts.add(item);
 	}
 
-	void buidMergeTree();
+	void buildMergeTree();
 
 private:
 	sort_record* getMerge();

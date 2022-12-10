@@ -2198,7 +2198,7 @@ PartitionedSort::~PartitionedSort()
 //		delete m_parts[p].srt_sort;
 }
 
-void PartitionedSort::buidMergeTree()
+void PartitionedSort::buildMergeTree()
 {
 	ULONG count = m_parts.getCount();
 	if (count <= 0)
