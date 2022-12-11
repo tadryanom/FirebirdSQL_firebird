@@ -6,8 +6,9 @@ arch=${1}
 MakeVersion=gen/Make.Version
 Build=`grep ^BuildNum ${MakeVersion}|awk '{print $3;}'`
 Version=`grep ^FirebirdVersion ${MakeVersion}|awk '{print $3;}'`
-Release="Firebird-${Version}.${Build}-0-android-initial-${arch}.tar.gz"
-Debug="Firebird-${Version}.${Build}-0-android-initial-${arch}-withDebugSymbols.tar.gz"
+PackageVersion=`grep ^PackageVersion ${MakeVersion}|awk '{print $3;}'`
+Release="Firebird-${Version}.${Build}-${PackageVersion}-android-initial-${arch}.tar.gz"
+Debug="Firebird-${Version}.${Build}-${PackageVersion}-android-initial-${arch}-withDebugSymbols.tar.gz"
 fbRootDir=`pwd`
 
 runTar()
