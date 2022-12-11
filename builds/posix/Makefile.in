@@ -95,7 +95,7 @@ endif
 all:	firebird
 
 firebird:
-	$(MAKE) TARGET=$(DefaultTarget) $(Process)
+	$(MAKE) TARGET?=$(DefaultTarget) $(Process)
 
 Release:
 	$(MAKE) TARGET=Release $(Process)
@@ -786,12 +786,12 @@ install install-embedded silent_install package packages dist:
 .PHONY:	tests tests_process run_tests run_tests_process
 
 tests:
-	$(MAKE) TARGET=$(DefaultTarget) tests_process
+	$(MAKE) TARGET?=$(DefaultTarget) tests_process
 
 tests_process: $(COMMON_TEST) $(ENGINE_TEST)
 
 run_tests:
-	$(MAKE) TARGET=$(DefaultTarget) run_tests_process
+	$(MAKE) TARGET?=$(DefaultTarget) run_tests_process
 
 run_tests_process: tests_process
 	$(COMMON_TEST) --log_level=all
@@ -801,13 +801,15 @@ run_tests_process: tests_process
 #___________________________________________________________________________
 # various cleaning
 #
-.PHONY: clean clean_objects clean_dependancies clean_extern_objects clean_build \
+.PHONY: clean clean_process clean_objects clean_dependancies clean_extern_objects clean_build \
 		clean_gpre_gen clean_icu clean_dbs clean_examples clean_makefiles \
 		clean_editline clean_all clean_decfloat clean_int128 clean_vers clean_misc
 
+clean:
+	$(MAKE) TARGET?=$(DefaultTarget) clean_process
 
-clean: clean_objects clean_dependancies clean_extern_objects clean_build \
-		clean_yacc_gen clean_gpre_gen clean_dbs clean_examples clean_tommath \
+clean_process: clean_objects clean_dependancies clean_extern_objects clean_build \
+		clean_yacc_gen clean_gpre_gen clean_dbs clean_examples clean_cds clean_tommath \
 		clean_tomcrypt clean_decfloat clean_int128 clean_vers clean_misc
 
 clean_vers:
@@ -852,6 +854,9 @@ clean_editline:
 
 #clean_icu:
 #	-$(MAKE) -C $(ROOT)/extern/icu/source clean
+
+clean_cds:
+	-$(RM_R) $(LIBCDS)/lib/$(TARGET)
 
 clean_tommath:
 	-$(MAKE) -C $(ROOT)/extern/libtommath clean
