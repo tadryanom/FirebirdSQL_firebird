@@ -343,7 +343,7 @@ void EXE_assignment(thread_db* tdbb, const ValueExprNode* to, dsc* from_desc, bo
 			switch (from_desc->dsc_dtype)
 			{
 				case dtype_sql_date:
-					if (!Firebird::TimeStamp::isValidDate(*(GDS_DATE*) from_desc->dsc_address))
+					if (!TimeStamp::isValidDate(*(GDS_DATE*) from_desc->dsc_address))
 					{
 						ERR_post(Arg::Gds(isc_date_range_exceeded));
 					}
@@ -352,7 +352,7 @@ void EXE_assignment(thread_db* tdbb, const ValueExprNode* to, dsc* from_desc, bo
 				case dtype_sql_time:
 				case dtype_sql_time_tz:
 				case dtype_ex_time_tz:
-					if (!Firebird::TimeStamp::isValidTime(*(GDS_TIME*) from_desc->dsc_address))
+					if (!TimeStamp::isValidTime(*(GDS_TIME*) from_desc->dsc_address))
 					{
 						ERR_post(Arg::Gds(isc_time_range_exceeded));
 					}
@@ -361,7 +361,7 @@ void EXE_assignment(thread_db* tdbb, const ValueExprNode* to, dsc* from_desc, bo
 				case dtype_timestamp:
 				case dtype_timestamp_tz:
 				case dtype_ex_timestamp_tz:
-					if (!Firebird::TimeStamp::isValidTimeStamp(*(GDS_TIMESTAMP*) from_desc->dsc_address))
+					if (!TimeStamp::isValidTimeStamp(*(GDS_TIMESTAMP*) from_desc->dsc_address))
 					{
 						ERR_post(Arg::Gds(isc_datetime_range_exceeded));
 					}
@@ -540,7 +540,7 @@ void EXE_execute_db_triggers(thread_db* tdbb, jrd_tra* transaction, TriggerActio
 				NULL, NULL, trigger_action, StmtNode::ALL_TRIGS);
 			tdbb->setTransaction(old_transaction);
 		}
-		catch (...)
+		catch (const Exception&)
 		{
 			tdbb->setTransaction(old_transaction);
 			throw;
@@ -558,34 +558,36 @@ void EXE_execute_ddl_triggers(thread_db* tdbb, jrd_tra* transaction, bool preTri
 
 	if (attachment->att_ddl_triggers)
 	{
-		jrd_tra* const oldTransaction = tdbb->getTransaction();
-		tdbb->setTransaction(transaction);
+		TrigVector triggers;
+		TrigVector* triggersPtr = &triggers;
 
-		try
+		for (const auto& trigger : *attachment->att_ddl_triggers)
 		{
-			TrigVector triggers;
-			TrigVector* triggersPtr = &triggers;
+			const bool preTrigger = ((trigger.type & 0x1) == 0);
 
-			for (TrigVector::iterator i = attachment->att_ddl_triggers->begin();
-				 i != attachment->att_ddl_triggers->end();
-				 ++i)
+			if ((trigger.type & (1LL << action)) && (preTriggers == preTrigger))
 			{
-				if ((i->type & (1LL << action)) &&
-					((preTriggers && (i->type & 0x1) == 0) || (!preTriggers && (i->type & 0x1) == 0x1)))
-				{
-					triggers.add() = *i;
-				}
+				triggers.add() = trigger;
 			}
-
-			EXE_execute_triggers(tdbb, &triggersPtr, NULL, NULL, TRIGGER_DDL,
-				StmtNode::ALL_TRIGS);
-
-			tdbb->setTransaction(oldTransaction);
 		}
-		catch (...)
+
+		if (triggers.hasData())
 		{
-			tdbb->setTransaction(oldTransaction);
-			throw;
+			jrd_tra* const oldTransaction = tdbb->getTransaction();
+			tdbb->setTransaction(transaction);
+
+			try
+			{
+				EXE_execute_triggers(tdbb, &triggersPtr, NULL, NULL, TRIGGER_DDL,
+					preTriggers ? StmtNode::PRE_TRIG : StmtNode::POST_TRIG);
+
+				tdbb->setTransaction(oldTransaction);
+			}
+			catch (const Exception&)
+			{
+				tdbb->setTransaction(oldTransaction);
+				throw;
+			}
 		}
 	}
 }
@@ -969,7 +971,7 @@ void EXE_unwind(thread_db* tdbb, Request* request)
 				while (request->req_ext_stmt)
 					request->req_ext_stmt->close(tdbb);
 			}
-			catch (const Firebird::Exception&)
+			catch (const Exception&)
 			{
 				tdbb->setRequest(old_request);
 				tdbb->setTransaction(old_transaction);
@@ -1259,7 +1261,7 @@ void EXE_execute_triggers(thread_db* tdbb,
 		if (vector != *triggers)
 			MET_release_triggers(tdbb, &vector, true);
 	}
-	catch (const Firebird::Exception& ex)
+	catch (const Exception& ex)
 	{
 		if (vector != *triggers)
 			MET_release_triggers(tdbb, &vector, true);
@@ -1451,7 +1453,7 @@ const StmtNode* EXE_looper(thread_db* tdbb, Request* request, const StmtNode* no
 				return node;
 			}
 		}	// try
-		catch (const Firebird::Exception& ex)
+		catch (const Exception& ex)
 		{
 			ex.stuffException(tdbb->tdbb_status_vector);
 
@@ -1473,7 +1475,7 @@ const StmtNode* EXE_looper(thread_db* tdbb, Request* request, const StmtNode* no
 
 			// If the database is already bug-checked, then get out
 			if (dbb->dbb_flags & DBB_bugcheck)
-				Firebird::status_exception::raise(tdbb->tdbb_status_vector);
+				status_exception::raise(tdbb->tdbb_status_vector);
 
 			exeState.errorPending = true;
 			exeState.catchDisabled = true;
@@ -1616,7 +1618,7 @@ static void release_blobs(thread_db* tdbb, Request* request)
 						// we need to reestablish accessor position
 					}
 
-					if (request->req_blobs.locate(Firebird::locGreat, blob_temp_id))
+					if (request->req_blobs.locate(locGreat, blob_temp_id))
 						continue;
 
 					break;
