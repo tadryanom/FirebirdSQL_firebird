@@ -961,3 +961,5 @@ FB_IMPL_MSG(JRD, 959, quoted_str_miss, -901, "22", "024", "Missing terminating q
 FB_IMPL_MSG(JRD, 960, wrong_shmem_ver, -902, "08", "006", "@1: inconsistent shared memory type/version; found @2, expected @3")
 FB_IMPL_MSG(JRD, 961, wrong_shmem_bitness, -902, "08", "006", "@1-bit engine can't open database already opened by @2-bit engine")
 FB_IMPL_MSG(JRD, 962, wrong_proc_plan, -281, "HY", "000", "Procedures cannot specify access type other than NATURAL in the plan")
+FB_IMPL_MSG(JRD, 963, invalid_blob_util_handle, -402, "42", "000", "Invalid RDB$BLOB_UTIL handle")
+FB_IMPL_MSG(JRD, 964, bad_temp_blob_id, -402, "42", "000", "Invalid temporary BLOB ID")
