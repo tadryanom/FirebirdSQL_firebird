@@ -693,7 +693,7 @@ void EXE_receive(thread_db* tdbb,
 							(current->bli_blob_object->blb_flags & BLB_close_on_read))
 						{
 							current->bli_blob_object->BLB_close(tdbb);
-					}
+						}
 					}
 					else
 					{
