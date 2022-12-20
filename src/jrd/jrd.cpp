@@ -7634,7 +7634,7 @@ void release_attachment(thread_db* tdbb, Jrd::Attachment* attachment, XThreadEns
 	attachment->att_replicator = nullptr;
 
 	if (attachment->att_dsql_instance)
-		attachment->att_dsql_instance->dbb_statement_cache->purge(tdbb);
+		attachment->att_dsql_instance->dbb_statement_cache->shutdown(tdbb);
 
 	while (attachment->att_repl_appliers.hasData())
 	{

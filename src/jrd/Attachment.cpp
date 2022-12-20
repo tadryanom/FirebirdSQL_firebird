@@ -837,11 +837,6 @@ void Jrd::Attachment::releaseLocks(thread_db* tdbb)
 	for (bool getResult = accessor.getFirst(); getResult; getResult = accessor.getNext())
 		LCK_release(tdbb, accessor.current()->second.lock);
 
-	// Release dsql statement cache lock
-
-	if (att_dsql_instance)
-		att_dsql_instance->dbb_statement_cache->purge(tdbb);
-
 	// Release the remaining locks
 
 	if (att_id_lock)
