@@ -1527,7 +1527,7 @@ void put_data(burp_rel* relation, ReadRelationReq* request)
 	else
 		xdr_buffer.lstr_address = NULL;
 
-	RCRD_OFFSET record_length = reqMeta->m_outRecLen;
+	RCRD_LENGTH record_length = reqMeta->m_outRecLen;
 	FB_UINT64 records = 0;
 	while (true)
 	{
@@ -4669,7 +4669,7 @@ void ReadRelationMeta::setRelation(const burp_rel* relation, bool partition)
 	m_outRecLen = offset;
 	m_outEofOffset = FB_ALIGN(offset, sizeof(SSHORT));
 	// To be used later for the buffer size to receive data
-	m_outMsgLen = (USHORT) (m_outEofOffset + sizeof(SSHORT));
+	m_outMsgLen = m_outEofOffset + sizeof(SSHORT);
 
 	if (partition)
 	{

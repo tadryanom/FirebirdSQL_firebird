@@ -3202,7 +3202,7 @@ void get_data(BurpGlobals* tdgbl, burp_rel* relation, WriteRelationReq* req)
 
 	FbLocalStatus status_vector;
 
-	ULONG length = req->getDataLength();
+	RCRD_LENGTH length = req->getDataLength();
 	UCHAR* buffer = req->getData();
 
 	//	BURP_verbose (124, relation->rel_name); // msg 124  restoring data for relation %s
@@ -3216,7 +3216,7 @@ void get_data(BurpGlobals* tdgbl, burp_rel* relation, WriteRelationReq* req)
 			BURP_free(data.lstr_address);
 	} );
 
-	ULONG old_length = 0;
+	RCRD_LENGTH old_length = 0;
 	IBatch* batch = req->getBatch();
 	UCHAR* sql = batch ? sql = req->getBatchMsgData() : nullptr;
 	tdgbl->batchInlineBlobLimit = batch ? req->getBatchInlineBlobLimit() : 0;
