@@ -184,7 +184,7 @@ IExternalResultSet* ProfilerPackage::discardProcedure(ThrowStatusExceptionWrappe
 	const auto tdbb = JRD_get_thread_data();
 	const auto attachment = tdbb->getAttachment();
 
-	if (in->attachmentId != attachment->att_attachment_id)
+	if (AttNumber(in->attachmentId) != attachment->att_attachment_id)
 	{
 		ProfilerIpc ipc(tdbb, *getDefaultMemoryPool(), in->attachmentId);
 		ipc.send(tdbb, ProfilerIpc::Tag::DISCARD, in);
@@ -204,7 +204,7 @@ IExternalResultSet* ProfilerPackage::flushProcedure(ThrowStatusExceptionWrapper*
 	const auto tdbb = JRD_get_thread_data();
 	const auto attachment = tdbb->getAttachment();
 
-	if (in->attachmentId != attachment->att_attachment_id)
+	if (AttNumber(in->attachmentId) != attachment->att_attachment_id)
 	{
 		ProfilerIpc ipc(tdbb, *getDefaultMemoryPool(), in->attachmentId);
 		ipc.send(tdbb, ProfilerIpc::Tag::FLUSH, in);
@@ -224,7 +224,7 @@ IExternalResultSet* ProfilerPackage::cancelSessionProcedure(ThrowStatusException
 	const auto tdbb = JRD_get_thread_data();
 	const auto attachment = tdbb->getAttachment();
 
-	if (in->attachmentId != attachment->att_attachment_id)
+	if (AttNumber(in->attachmentId) != attachment->att_attachment_id)
 	{
 		ProfilerIpc ipc(tdbb, *getDefaultMemoryPool(), in->attachmentId);
 		ipc.send(tdbb, ProfilerIpc::Tag::CANCEL_SESSION, in);
@@ -245,7 +245,7 @@ IExternalResultSet* ProfilerPackage::finishSessionProcedure(ThrowStatusException
 	const auto tdbb = JRD_get_thread_data();
 	const auto attachment = tdbb->getAttachment();
 
-	if (in->attachmentId != attachment->att_attachment_id)
+	if (AttNumber(in->attachmentId) != attachment->att_attachment_id)
 	{
 		ProfilerIpc ipc(tdbb, *getDefaultMemoryPool(), in->attachmentId);
 		ipc.send(tdbb, ProfilerIpc::Tag::FINISH_SESSION, in);
@@ -265,7 +265,7 @@ IExternalResultSet* ProfilerPackage::pauseSessionProcedure(ThrowStatusExceptionW
 	const auto tdbb = JRD_get_thread_data();
 	const auto attachment = tdbb->getAttachment();
 
-	if (in->attachmentId != attachment->att_attachment_id)
+	if (AttNumber(in->attachmentId) != attachment->att_attachment_id)
 	{
 		ProfilerIpc ipc(tdbb, *getDefaultMemoryPool(), in->attachmentId);
 		ipc.send(tdbb, ProfilerIpc::Tag::PAUSE_SESSION, in);
@@ -285,7 +285,7 @@ IExternalResultSet* ProfilerPackage::resumeSessionProcedure(ThrowStatusException
 	const auto tdbb = JRD_get_thread_data();
 	const auto attachment = tdbb->getAttachment();
 
-	if (in->attachmentId != attachment->att_attachment_id)
+	if (AttNumber(in->attachmentId) != attachment->att_attachment_id)
 	{
 		ProfilerIpc ipc(tdbb, *getDefaultMemoryPool(), in->attachmentId);
 		ipc.send(tdbb, ProfilerIpc::Tag::RESUME_SESSION, in);
@@ -305,7 +305,7 @@ IExternalResultSet* ProfilerPackage::setFlushIntervalProcedure(ThrowStatusExcept
 	const auto tdbb = JRD_get_thread_data();
 	const auto attachment = tdbb->getAttachment();
 
-	if (in->attachmentId != attachment->att_attachment_id)
+	if (AttNumber(in->attachmentId) != attachment->att_attachment_id)
 	{
 		ProfilerIpc ipc(tdbb, *getDefaultMemoryPool(), in->attachmentId);
 		ipc.send(tdbb, ProfilerIpc::Tag::SET_FLUSH_INTERVAL, in);
@@ -325,7 +325,7 @@ void ProfilerPackage::startSessionFunction(ThrowStatusExceptionWrapper* /*status
 	const auto tdbb = JRD_get_thread_data();
 	const auto attachment = tdbb->getAttachment();
 
-	if (in->attachmentId != attachment->att_attachment_id)
+	if (AttNumber(in->attachmentId) != attachment->att_attachment_id)
 	{
 		ProfilerIpc ipc(tdbb, *getDefaultMemoryPool(), in->attachmentId);
 		ipc.sendAndReceive(tdbb, ProfilerIpc::Tag::START_SESSION, in, out);
