@@ -4989,6 +4989,17 @@ DmlNode* DerivedExprNode::parse(thread_db* tdbb, MemoryPool& pool, CompilerScrat
 	return node;
 }
 
+void DerivedExprNode::collectStreams(SortedStreamList& streamList) const
+{
+	arg->collectStreams(streamList);
+
+	for (const auto i : internalStreamList)
+	{
+		if (!streamList.exist(i))
+			streamList.add(i);
+	}
+}
+
 bool DerivedExprNode::computable(CompilerScratch* csb, StreamType stream,
 	bool allowOnlyCurrentStream, ValueExprNode* /*value*/)
 {
