@@ -11036,6 +11036,8 @@ DmlNode* SubQueryNode::parse(thread_db* tdbb, MemoryPool& pool, CompilerScratch*
 
 	node->rse = PAR_rse(tdbb, csb);
 
+	node->rse->flags |= RseNode::FLAG_SUB_QUERY;
+
 	if (blrOp != blr_count)
 		node->value1 = PAR_parse_value(tdbb, csb);
 
@@ -11356,9 +11358,8 @@ ValueExprNode* SubQueryNode::pass2(thread_db* tdbb, CompilerScratch* csb)
 	// Finish up processing of record selection expressions.
 
 	RecordSource* const rsb = CMP_post_rse(tdbb, csb, rse);
-	csb->csb_fors.add(rsb);
-
-	subQuery = FB_NEW_POOL(*tdbb->getDefaultPool()) SubQuery(rsb, rse->rse_invariants);
+	subQuery = FB_NEW_POOL(*tdbb->getDefaultPool()) SubQuery(rsb, rse);
+	csb->csb_fors.add(subQuery);
 
 	return this;
 }
