@@ -730,6 +730,41 @@ public:
 		FLAG_SUB_QUERY			= 0x100	// sub-query
 	};
 
+	bool isInvariant() const
+	{
+		return (flags & FLAG_VARIANT) == 0;
+	}
+
+	bool isSingular() const
+	{
+		return (flags & FLAG_SINGULAR) != 0;
+	}
+
+	bool isScrollable() const
+	{
+		return (flags & FLAG_SCROLLABLE) != 0;
+	}
+
+	bool isLateral() const
+	{
+		return (flags & FLAG_LATERAL) != 0;
+	}
+
+	bool isSubQuery() const
+	{
+		return (flags & FLAG_SUB_QUERY) != 0;
+	}
+
+	bool hasWriteLock() const
+	{
+		return (flags & FLAG_WRITELOCK) != 0;
+	}
+
+	bool hasSkipLocked() const
+	{
+		return (flags & FLAG_SKIP_LOCKED) != 0;
+	}
+
 	explicit RseNode(MemoryPool& pool)
 		: TypedNode<RecordSourceNode, RecordSourceNode::TYPE_RSE>(pool),
 		  dsqlFirst(NULL),

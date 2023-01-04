@@ -1034,7 +1034,7 @@ RecordSource* Optimizer::compile(BoolExprNodeStack* parentStack)
 	if (rse->rse_skip)
 		rsb = FB_NEW_POOL(getPool()) SkipRowsStream(csb, rsb, rse->rse_skip);
 
-	if (rse->flags & RseNode::FLAG_WRITELOCK)
+	if (rse->hasWriteLock())
 	{
 		for (const auto compileStream : compileStreams)
 		{
@@ -1048,16 +1048,16 @@ RecordSource* Optimizer::compile(BoolExprNodeStack* parentStack)
 				SCL_update, obj_relations, tail->csb_relation->rel_name);
 		}
 
-		rsb = FB_NEW_POOL(getPool()) LockedStream(csb, rsb, (rse->flags & RseNode::FLAG_SKIP_LOCKED));
+		rsb = FB_NEW_POOL(getPool()) LockedStream(csb, rsb, rse->hasSkipLocked());
 	}
 
 	if (rse->rse_first)
 		rsb = FB_NEW_POOL(getPool()) FirstRowsStream(csb, rsb, rse->rse_first);
 
-	if (rse->flags & RseNode::FLAG_SINGULAR)
+	if (rse->isSingular())
 		rsb = FB_NEW_POOL(getPool()) SingularStream(csb, rsb);
 
-	if (rse->flags & RseNode::FLAG_SCROLLABLE)
+	if (rse->isScrollable())
 		rsb = FB_NEW_POOL(getPool()) BufferedStream(csb, rsb);
 
 	return rsb;

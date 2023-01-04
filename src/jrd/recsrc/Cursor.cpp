@@ -70,18 +70,18 @@ void Select::printPlan(thread_db* tdbb, string& plan, bool detailed) const
 {
 	if (detailed)
 	{
-		if (m_rse->flags & RseNode::FLAG_SUB_QUERY)
+		if (m_rse->isSubQuery())
 		{
 			plan += "\nSub-query";
 
-			if (!(m_rse->flags & RseNode::FLAG_VARIANT))
+			if (m_rse->isInvariant())
 				plan += " (invariant)";
 		}
 		else if (m_cursorName.hasData())
 		{
 			plan += "\nCursor \"" + string(m_cursorName) + "\"";
 
-			if (m_rse->flags & RseNode::FLAG_SCROLLABLE)
+			if (m_rse->isScrollable())
 				plan += " (scrollable)";
 		}
 		else
@@ -179,7 +179,7 @@ void Cursor::close(thread_db* tdbb) const
 
 bool Cursor::fetchNext(thread_db* tdbb) const
 {
-	if (m_rse->flags & RseNode::FLAG_SCROLLABLE)
+	if (m_rse->isScrollable())
 		return fetchRelative(tdbb, 1);
 
 	if (!validate(tdbb))
@@ -215,7 +215,7 @@ bool Cursor::fetchNext(thread_db* tdbb) const
 
 bool Cursor::fetchPrior(thread_db* tdbb) const
 {
-	if (!(m_rse->flags & RseNode::FLAG_SCROLLABLE))
+	if (!m_rse->isScrollable())
 	{
 		// error: invalid fetch direction
 		status_exception::raise(Arg::Gds(isc_invalid_fetch_option) << Arg::Str("PRIOR"));
@@ -226,7 +226,7 @@ bool Cursor::fetchPrior(thread_db* tdbb) const
 
 bool Cursor::fetchFirst(thread_db* tdbb) const
 {
-	if (!(m_rse->flags & RseNode::FLAG_SCROLLABLE))
+	if (!m_rse->isScrollable())
 	{
 		// error: invalid fetch direction
 		status_exception::raise(Arg::Gds(isc_invalid_fetch_option) << Arg::Str("FIRST"));
@@ -237,7 +237,7 @@ bool Cursor::fetchFirst(thread_db* tdbb) const
 
 bool Cursor::fetchLast(thread_db* tdbb) const
 {
-	if (!(m_rse->flags & RseNode::FLAG_SCROLLABLE))
+	if (!m_rse->isScrollable())
 	{
 		// error: invalid fetch direction
 		status_exception::raise(Arg::Gds(isc_invalid_fetch_option) << Arg::Str("LAST"));
@@ -248,7 +248,7 @@ bool Cursor::fetchLast(thread_db* tdbb) const
 
 bool Cursor::fetchAbsolute(thread_db* tdbb, SINT64 offset) const
 {
-	if (!(m_rse->flags & RseNode::FLAG_SCROLLABLE))
+	if (!m_rse->isScrollable())
 	{
 		// error: invalid fetch direction
 		status_exception::raise(Arg::Gds(isc_invalid_fetch_option) << Arg::Str("ABSOLUTE"));
@@ -309,7 +309,7 @@ bool Cursor::fetchAbsolute(thread_db* tdbb, SINT64 offset) const
 
 bool Cursor::fetchRelative(thread_db* tdbb, SINT64 offset) const
 {
-	if (!(m_rse->flags & RseNode::FLAG_SCROLLABLE))
+	if (!m_rse->isScrollable())
 	{
 		// error: invalid fetch direction
 		status_exception::raise(Arg::Gds(isc_invalid_fetch_option) << Arg::Str("RELATIVE"));

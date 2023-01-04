@@ -75,7 +75,7 @@ namespace Jrd
 
 	// SubQuery class (simplified forward-only cursor)
 
-	class SubQuery : public Select
+	class SubQuery final : public Select
 	{
 	public:
 		SubQuery(const RecordSource* rsb, const RseNode* rse);
@@ -88,7 +88,7 @@ namespace Jrd
 
 	// Cursor class (wrapper around the whole access tree)
 
-	class Cursor : public Select
+	class Cursor final : public Select
 	{
 		enum State { BOS, POSITIONED, EOS };
 

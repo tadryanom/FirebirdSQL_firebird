@@ -5077,7 +5077,7 @@ StmtNode* ForNode::pass2(thread_db* tdbb, CompilerScratch* csb)
 
 	csb->csb_fors.add(cursor);
 
-	if (rse->flags & RseNode::FLAG_WRITELOCK)
+	if (rse->hasWriteLock())
 		withLock = true;
 
 	if (marks & MARK_MERGE)

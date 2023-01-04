@@ -11321,7 +11321,7 @@ ValueExprNode* SubQueryNode::pass2(thread_db* tdbb, CompilerScratch* csb)
 	if (!rse)
 		ERR_post(Arg::Gds(isc_wish_list));
 
-	if (!(rse->flags & RseNode::FLAG_VARIANT))
+	if (rse->isInvariant())
 	{
 		nodFlags |= FLAG_INVARIANT;
 		csb->csb_invariants.push(&impureOffset);
