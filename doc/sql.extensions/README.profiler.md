@@ -252,9 +252,9 @@ Below is the list of tables that stores profile data.
 
  - `PROFILE_ID` type `BIGINT` - Profile session ID
  - `STATEMENT_ID` type `BIGINT` - Statement ID
- - `CURSOR_ID` type `BIGINT` - Cursor ID
- - `RECORD_SOURCE_ID` type `BIGINT` - Record source ID
- - `PARENT_RECORD_SOURCE_ID` type `BIGINT` - Parent record source ID
+ - `CURSOR_ID` type `INTEGER` - Cursor ID
+ - `RECORD_SOURCE_ID` type `INTEGER` - Record source ID
+ - `PARENT_RECORD_SOURCE_ID` type `INTEGER` - Parent record source ID
  - `ACCESS_PATH` type `VARCHAR(255) CHARACTER SET UTF8` - Access path for the record source
  - Primary key: `PROFILE_ID, STATEMENT_ID, CURSOR_ID, RECORD_SOURCE_ID`
 
@@ -286,8 +286,8 @@ Below is the list of tables that stores profile data.
 
  - `PROFILE_ID` type `BIGINT` - Profile session ID
  - `REQUEST_ID` type `BIGINT` - Request ID
- - `CURSOR_ID` type `BIGINT` - Cursor ID
- - `RECORD_SOURCE_ID` type `BIGINT` - Record source ID
+ - `CURSOR_ID` type `INTEGER` - Cursor ID
+ - `RECORD_SOURCE_ID` type `INTEGER` - Record source ID
  - `STATEMENT_ID` type `BIGINT` - Statement ID
  - `OPEN_COUNTER` type `BIGINT` - Number of open times of the record source
  - `OPEN_MIN_ELAPSED_TIME` type `BIGINT` - Minimal elapsed time (in nanoseconds) of a record source open

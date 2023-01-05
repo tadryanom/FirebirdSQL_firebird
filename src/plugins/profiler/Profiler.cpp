@@ -374,7 +374,7 @@ void ProfilerPlugin::flush(ThrowStatusExceptionWrapper* status)
 	) statementMessage(status, MasterInterfacePtr());
 	statementMessage.clear();
 
-	constexpr auto recSrcsSql = R"""(
+	constexpr auto recSrcSql = R"""(
 		update or insert into plg$prof_record_sources
 		    (profile_id, statement_id, cursor_id, record_source_id,
 		     parent_record_source_id, access_path)
@@ -382,15 +382,15 @@ void ProfilerPlugin::flush(ThrowStatusExceptionWrapper* status)
 		    matching (profile_id, statement_id, cursor_id, record_source_id)
 	)""";
 
-	FB_MESSAGE(RecSrcsMessage, ThrowStatusExceptionWrapper,
+	FB_MESSAGE(RecSrcMessage, ThrowStatusExceptionWrapper,
 		(FB_BIGINT, profileId)
 		(FB_BIGINT, statementId)
 		(FB_INTEGER, cursorId)
 		(FB_INTEGER, recordSourceId)
 		(FB_BIGINT, parentRecordSourceId)
 		(FB_INTL_VARCHAR(1024 * 4, CS_UTF8), accessPath)
-	) recSrcsMessage(status, MasterInterfacePtr());
-	recSrcsMessage.clear();
+	) recSrcMessage(status, MasterInterfacePtr());
+	recSrcMessage.clear();
 
 	constexpr auto requestSql = R"""(
 		update or insert into plg$prof_requests
@@ -410,7 +410,7 @@ void ProfilerPlugin::flush(ThrowStatusExceptionWrapper* status)
 	) requestMessage(status, MasterInterfacePtr());
 	requestMessage.clear();
 
-	constexpr auto recSrcStatsSql = R"""(
+	constexpr auto recSrcStatSql = R"""(
 		execute block (
 		    profile_id type of column plg$prof_record_source_stats.profile_id = ?,
 		    request_id type of column plg$prof_record_source_stats.request_id = ?,
@@ -454,7 +454,7 @@ void ProfilerPlugin::flush(ThrowStatusExceptionWrapper* status)
 		end
 	)""";
 
-	FB_MESSAGE(RecSrcStatsMessage, ThrowStatusExceptionWrapper,
+	FB_MESSAGE(RecSrcStatMessage, ThrowStatusExceptionWrapper,
 		(FB_BIGINT, profileId)
 		(FB_BIGINT, requestId)
 		(FB_INTEGER, cursorId)
@@ -468,10 +468,10 @@ void ProfilerPlugin::flush(ThrowStatusExceptionWrapper* status)
 		(FB_BIGINT, fetchMinElapsedTime)
 		(FB_BIGINT, fetchMaxElapsedTime)
 		(FB_BIGINT, fetchTotalElapsedTime)
-	) recSrcStatsMessage(status, MasterInterfacePtr());
-	recSrcStatsMessage.clear();
+	) recSrcStatMessage(status, MasterInterfacePtr());
+	recSrcStatMessage.clear();
 
-	constexpr auto psqlStatsSql = R"""(
+	constexpr auto psqlStatSql = R"""(
 		execute block (
 		    profile_id type of column plg$prof_psql_stats.profile_id = ?,
 		    request_id type of column plg$prof_psql_stats.request_id = ?,
@@ -505,7 +505,7 @@ void ProfilerPlugin::flush(ThrowStatusExceptionWrapper* status)
 		end
 	)""";
 
-	FB_MESSAGE(PsqlStatsMessage, ThrowStatusExceptionWrapper,
+	FB_MESSAGE(PsqlStatMessage, ThrowStatusExceptionWrapper,
 		(FB_BIGINT, profileId)
 		(FB_BIGINT, requestId)
 		(FB_INTEGER, lineNum)
@@ -515,8 +515,8 @@ void ProfilerPlugin::flush(ThrowStatusExceptionWrapper* status)
 		(FB_BIGINT, minElapsedTime)
 		(FB_BIGINT, maxElapsedTime)
 		(FB_BIGINT, totalElapsedTime)
-	) psqlStatsMessage(status, MasterInterfacePtr());
-	psqlStatsMessage.clear();
+	) psqlStatMessage(status, MasterInterfacePtr());
+	psqlStatMessage.clear();
 
 	auto transaction = makeNoIncRef(userAttachment->startTransaction(status, 0, nullptr));
 
@@ -524,17 +524,17 @@ void ProfilerPlugin::flush(ThrowStatusExceptionWrapper* status)
 	auto statementStmt = makeNoIncRef(userAttachment->prepare(
 		status, transaction, 0, statementSql, SQL_DIALECT_CURRENT, 0));
 	auto recSrcsStmt = makeNoIncRef(userAttachment->prepare(
-		status, transaction, 0, recSrcsSql, SQL_DIALECT_CURRENT, 0));
+		status, transaction, 0, recSrcSql, SQL_DIALECT_CURRENT, 0));
 	auto requestBatch = makeNoIncRef(userAttachment->createBatch(status, transaction, 0, requestSql, SQL_DIALECT_CURRENT,
 		requestMessage.getMetadata(), 0, nullptr));
 	auto recSrcStatsBatch = makeNoIncRef(userAttachment->createBatch(
-		status, transaction, 0, recSrcStatsSql, SQL_DIALECT_CURRENT, recSrcStatsMessage.getMetadata(), 0, nullptr));
-	auto psqlStatsBatch = makeNoIncRef(userAttachment->createBatch(
-		status, transaction, 0, psqlStatsSql, SQL_DIALECT_CURRENT, psqlStatsMessage.getMetadata(), 0, nullptr));
+		status, transaction, 0, recSrcStatSql, SQL_DIALECT_CURRENT, recSrcStatMessage.getMetadata(), 0, nullptr));
+	auto psqlStatBatch = makeNoIncRef(userAttachment->createBatch(
+		status, transaction, 0, psqlStatSql, SQL_DIALECT_CURRENT, psqlStatMessage.getMetadata(), 0, nullptr));
 
 	unsigned requestBatchSize = 0;
-	unsigned recSrcStatsBatchSize = 0;
-	unsigned psqlStatsBatchSize = 0;
+	unsigned recSrcStatBatchSize = 0;
+	unsigned psqlStatBatchSize = 0;
 
 	auto executeBatch = [&](IBatch* batch, unsigned& batchSize)
 	{
@@ -550,8 +550,8 @@ void ProfilerPlugin::flush(ThrowStatusExceptionWrapper* status)
 	auto executeBatches = [&]()
 	{
 		executeBatch(requestBatch, requestBatchSize);
-		executeBatch(recSrcStatsBatch, recSrcStatsBatchSize);
-		executeBatch(psqlStatsBatch, psqlStatsBatchSize);
+		executeBatch(recSrcStatsBatch, recSrcStatBatchSize);
+		executeBatch(psqlStatBatch, psqlStatBatchSize);
 	};
 
 	auto addBatch = [&](IBatch* batch, unsigned& batchSize, const auto& message)
@@ -660,26 +660,26 @@ void ProfilerPlugin::flush(ThrowStatusExceptionWrapper* status)
 			const auto recSourceId = recSourceIt.first.second;
 			const auto& recSrc = recSourceIt.second;
 
-			recSrcsMessage->profileIdNull = FB_FALSE;
-			recSrcsMessage->profileId = session->getId();
+			recSrcMessage->profileIdNull = FB_FALSE;
+			recSrcMessage->profileId = session->getId();
 
-			recSrcsMessage->statementIdNull = FB_FALSE;
-			recSrcsMessage->statementId = statementId;
+			recSrcMessage->statementIdNull = FB_FALSE;
+			recSrcMessage->statementId = statementId;
 
-			recSrcsMessage->cursorIdNull = FB_FALSE;
-			recSrcsMessage->cursorId = cursorId;
+			recSrcMessage->cursorIdNull = FB_FALSE;
+			recSrcMessage->cursorId = cursorId;
 
-			recSrcsMessage->recordSourceIdNull = FB_FALSE;
-			recSrcsMessage->recordSourceId = recSourceId;
+			recSrcMessage->recordSourceIdNull = FB_FALSE;
+			recSrcMessage->recordSourceId = recSourceId;
 
-			recSrcsMessage->parentRecordSourceIdNull = !recSrc.parentId.specified;
-			recSrcsMessage->parentRecordSourceId = recSrc.parentId.value;
+			recSrcMessage->parentRecordSourceIdNull = !recSrc.parentId.specified;
+			recSrcMessage->parentRecordSourceId = recSrc.parentId.value;
 
-			recSrcsMessage->accessPathNull = FB_FALSE;
-			recSrcsMessage->accessPath.set(recSrc.accessPath.c_str());
+			recSrcMessage->accessPathNull = FB_FALSE;
+			recSrcMessage->accessPath.set(recSrc.accessPath.c_str());
 
-			recSrcsStmt->execute(status, transaction, recSrcsMessage.getMetadata(),
-				recSrcsMessage.getData(), nullptr, nullptr);
+			recSrcsStmt->execute(status, transaction, recSrcMessage.getMetadata(),
+				recSrcMessage.getData(), nullptr, nullptr);
 		}
 
 		RightPooledMap<unsigned, Array<NonPooledPair<SINT64, Request>*>> requestsByLevel;
@@ -752,46 +752,46 @@ void ProfilerPlugin::flush(ThrowStatusExceptionWrapper* status)
 					const auto& cursorRecSource = statsIt.first;
 					const auto& stats = statsIt.second;
 
-					recSrcStatsMessage->profileIdNull = FB_FALSE;
-					recSrcStatsMessage->profileId = session->getId();
+					recSrcStatMessage->profileIdNull = FB_FALSE;
+					recSrcStatMessage->profileId = session->getId();
 
-					recSrcStatsMessage->requestIdNull = FB_FALSE;
-					recSrcStatsMessage->requestId = profileRequestId;
+					recSrcStatMessage->requestIdNull = FB_FALSE;
+					recSrcStatMessage->requestId = profileRequestId;
 
-					recSrcStatsMessage->cursorIdNull = FB_FALSE;
-					recSrcStatsMessage->cursorId = cursorRecSource.first;
+					recSrcStatMessage->cursorIdNull = FB_FALSE;
+					recSrcStatMessage->cursorId = cursorRecSource.first;
 
-					recSrcStatsMessage->recordSourceIdNull = FB_FALSE;
-					recSrcStatsMessage->recordSourceId = cursorRecSource.second;
+					recSrcStatMessage->recordSourceIdNull = FB_FALSE;
+					recSrcStatMessage->recordSourceId = cursorRecSource.second;
 
-					recSrcStatsMessage->statementIdNull = FB_FALSE;
-					recSrcStatsMessage->statementId = profileRequest.statementId;
+					recSrcStatMessage->statementIdNull = FB_FALSE;
+					recSrcStatMessage->statementId = profileRequest.statementId;
 
-					recSrcStatsMessage->openCounterNull = FB_FALSE;
-					recSrcStatsMessage->openCounter = stats.openStats.counter;
+					recSrcStatMessage->openCounterNull = FB_FALSE;
+					recSrcStatMessage->openCounter = stats.openStats.counter;
 
-					recSrcStatsMessage->openMinElapsedTimeNull = FB_FALSE;
-					recSrcStatsMessage->openMinElapsedTime = stats.openStats.minElapsedTime;
+					recSrcStatMessage->openMinElapsedTimeNull = FB_FALSE;
+					recSrcStatMessage->openMinElapsedTime = stats.openStats.minElapsedTime;
 
-					recSrcStatsMessage->openMaxElapsedTimeNull = FB_FALSE;
-					recSrcStatsMessage->openMaxElapsedTime = stats.openStats.maxElapsedTime;
+					recSrcStatMessage->openMaxElapsedTimeNull = FB_FALSE;
+					recSrcStatMessage->openMaxElapsedTime = stats.openStats.maxElapsedTime;
 
-					recSrcStatsMessage->openTotalElapsedTimeNull = FB_FALSE;
-					recSrcStatsMessage->openTotalElapsedTime = stats.openStats.totalElapsedTime;
+					recSrcStatMessage->openTotalElapsedTimeNull = FB_FALSE;
+					recSrcStatMessage->openTotalElapsedTime = stats.openStats.totalElapsedTime;
 
-					recSrcStatsMessage->fetchCounterNull = FB_FALSE;
-					recSrcStatsMessage->fetchCounter = stats.fetchStats.counter;
+					recSrcStatMessage->fetchCounterNull = FB_FALSE;
+					recSrcStatMessage->fetchCounter = stats.fetchStats.counter;
 
-					recSrcStatsMessage->fetchMinElapsedTimeNull = FB_FALSE;
-					recSrcStatsMessage->fetchMinElapsedTime = stats.fetchStats.minElapsedTime;
+					recSrcStatMessage->fetchMinElapsedTimeNull = FB_FALSE;
+					recSrcStatMessage->fetchMinElapsedTime = stats.fetchStats.minElapsedTime;
 
-					recSrcStatsMessage->fetchMaxElapsedTimeNull = FB_FALSE;
-					recSrcStatsMessage->fetchMaxElapsedTime = stats.fetchStats.maxElapsedTime;
+					recSrcStatMessage->fetchMaxElapsedTimeNull = FB_FALSE;
+					recSrcStatMessage->fetchMaxElapsedTime = stats.fetchStats.maxElapsedTime;
 
-					recSrcStatsMessage->fetchTotalElapsedTimeNull = FB_FALSE;
-					recSrcStatsMessage->fetchTotalElapsedTime = stats.fetchStats.totalElapsedTime;
+					recSrcStatMessage->fetchTotalElapsedTimeNull = FB_FALSE;
+					recSrcStatMessage->fetchTotalElapsedTime = stats.fetchStats.totalElapsedTime;
 
-					addBatch(recSrcStatsBatch, recSrcStatsBatchSize, recSrcStatsMessage);
+					addBatch(recSrcStatsBatch, recSrcStatBatchSize, recSrcStatMessage);
 				}
 
 				profileRequest.recordSourcesStats.clear();
@@ -800,34 +800,34 @@ void ProfilerPlugin::flush(ThrowStatusExceptionWrapper* status)
 				{
 					const auto& lineColumn = statsIt.first;
 
-					psqlStatsMessage->profileIdNull = FB_FALSE;
-					psqlStatsMessage->profileId = session->getId();
+					psqlStatMessage->profileIdNull = FB_FALSE;
+					psqlStatMessage->profileId = session->getId();
 
-					psqlStatsMessage->requestIdNull = FB_FALSE;
-					psqlStatsMessage->requestId = profileRequestId;
+					psqlStatMessage->requestIdNull = FB_FALSE;
+					psqlStatMessage->requestId = profileRequestId;
 
-					psqlStatsMessage->lineNumNull = FB_FALSE;
-					psqlStatsMessage->lineNum = lineColumn.first;
+					psqlStatMessage->lineNumNull = FB_FALSE;
+					psqlStatMessage->lineNum = lineColumn.first;
 
-					psqlStatsMessage->columnNumNull = FB_FALSE;
-					psqlStatsMessage->columnNum = lineColumn.second;
+					psqlStatMessage->columnNumNull = FB_FALSE;
+					psqlStatMessage->columnNum = lineColumn.second;
 
-					psqlStatsMessage->statementIdNull = FB_FALSE;
-					psqlStatsMessage->statementId = profileRequest.statementId;
+					psqlStatMessage->statementIdNull = FB_FALSE;
+					psqlStatMessage->statementId = profileRequest.statementId;
 
-					psqlStatsMessage->counterNull = FB_FALSE;
-					psqlStatsMessage->counter = statsIt.second.counter;
+					psqlStatMessage->counterNull = FB_FALSE;
+					psqlStatMessage->counter = statsIt.second.counter;
 
-					psqlStatsMessage->minElapsedTimeNull = FB_FALSE;
-					psqlStatsMessage->minElapsedTime = statsIt.second.minElapsedTime;
+					psqlStatMessage->minElapsedTimeNull = FB_FALSE;
+					psqlStatMessage->minElapsedTime = statsIt.second.minElapsedTime;
 
-					psqlStatsMessage->maxElapsedTimeNull = FB_FALSE;
-					psqlStatsMessage->maxElapsedTime = statsIt.second.maxElapsedTime;
+					psqlStatMessage->maxElapsedTimeNull = FB_FALSE;
+					psqlStatMessage->maxElapsedTime = statsIt.second.maxElapsedTime;
 
-					psqlStatsMessage->totalElapsedTimeNull = FB_FALSE;
-					psqlStatsMessage->totalElapsedTime = statsIt.second.totalElapsedTime;
+					psqlStatMessage->totalElapsedTimeNull = FB_FALSE;
+					psqlStatMessage->totalElapsedTime = statsIt.second.totalElapsedTime;
 
-					addBatch(psqlStatsBatch, psqlStatsBatchSize, psqlStatsMessage);
+					addBatch(psqlStatBatch, psqlStatBatchSize, psqlStatMessage);
 				}
 
 				profileRequest.psqlStats.clear();
@@ -913,9 +913,9 @@ void ProfilerPlugin::createMetadata(ThrowStatusExceptionWrapper* status, RefPtr<
 		            on delete cascade
 		            using index plg$prof_record_sources_profile,
 		    statement_id bigint not null,
-		    cursor_id bigint not null,
-		    record_source_id bigint not null,
-		    parent_record_source_id bigint,
+		    cursor_id integer not null,
+		    record_source_id integer not null,
+		    parent_record_source_id integer,
 		    access_path varchar(1024) character set utf8 not null,
 		    constraint plg$prof_record_sources_pk
 		        primary key (profile_id, statement_id, cursor_id, record_source_id)
@@ -999,8 +999,8 @@ void ProfilerPlugin::createMetadata(ThrowStatusExceptionWrapper* status, RefPtr<
 		            on delete cascade
 		            using index plg$prof_record_source_stats_profile_id,
 		    request_id bigint not null,
-		    cursor_id bigint not null,
-		    record_source_id bigint not null,
+		    cursor_id integer not null,
+		    record_source_id integer not null,
 		    statement_id bigint not null,
 		    open_counter bigint not null,
 		    open_min_elapsed_time bigint not null,
@@ -1145,7 +1145,7 @@ void ProfilerPlugin::createMetadata(ThrowStatusExceptionWrapper* status, RefPtr<
 		       max(rstat.fetch_max_elapsed_time) fetch_max_elapsed_time,
 		       cast(sum(rstat.fetch_total_elapsed_time) as bigint) fetch_total_elapsed_time,
 		       cast(sum(rstat.fetch_total_elapsed_time) / nullif(sum(rstat.fetch_counter), 0) as bigint) fetch_avg_elapsed_time,
-		       cast(coalesce(sum(rstat.open_total_elapsed_time), 0) + coalesce(sum(rstat.fetch_total_elapsed_time), 0) as bigint) open_fetch_total_time
+		       cast(coalesce(sum(rstat.open_total_elapsed_time), 0) + coalesce(sum(rstat.fetch_total_elapsed_time), 0) as bigint) open_fetch_total_elapsed_time
 		  from plg$prof_record_source_stats rstat
 		  join plg$prof_record_sources recsrc
 		    on recsrc.profile_id = rstat.profile_id and

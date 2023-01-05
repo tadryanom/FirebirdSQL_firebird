@@ -139,8 +139,8 @@ namespace Jrd
 		double m_cardinality = 0.0;
 		ULONG m_impure = 0;
 		bool m_recursive = false;
-		ULONG m_cursorProfileId;
-		ULONG m_recSourceProfileId;
+		const ULONG m_cursorProfileId;
+		const ULONG m_recSourceProfileId;
 	};
 
 
