@@ -1005,13 +1005,6 @@ void EXE_unwind(thread_db* tdbb, Request* request)
 
 	request->req_sorts.unlinkAll();
 
-	if (request->req_proc_sav_point && (request->req_flags & req_proc_fetch))
-	{
-		// Release savepoints used by this request
-		Savepoint::destroy(request->req_proc_sav_point);
-		fb_assert(!request->req_proc_sav_point);
-	}
-
 	TRA_release_request_snapshot(tdbb, request);
 	TRA_detach_request(request);
 
