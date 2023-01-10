@@ -947,25 +947,24 @@ void EXE_unwind(thread_db* tdbb, Request* request)
 	{
 		const Statement* statement = request->getStatement();
 
-		if (statement->fors.getCount() || request->req_ext_resultset || request->req_ext_stmt)
+		if (statement->fors.hasData() || request->req_ext_resultset || request->req_ext_stmt)
 		{
 			Jrd::ContextPoolHolder context(tdbb, request->req_pool);
 			Request* old_request = tdbb->getRequest();
 			jrd_tra* old_transaction = tdbb->getTransaction();
-			try {
+
+			try
+			{
 				tdbb->setRequest(request);
 				tdbb->setTransaction(request->req_transaction);
 
-				for (const RecordSource* const* ptr = statement->fors.begin();
-					 ptr != statement->fors.end(); ++ptr)
-				{
-					(*ptr)->close(tdbb);
-				}
+				for (const auto select : statement->fors)
+					select->close(tdbb);
 
 				if (request->req_ext_resultset)
 				{
 					delete request->req_ext_resultset;
-					request->req_ext_resultset = NULL;
+					request->req_ext_resultset = nullptr;
 				}
 
 				while (request->req_ext_stmt)

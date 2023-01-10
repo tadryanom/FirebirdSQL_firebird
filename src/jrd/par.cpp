@@ -1404,7 +1404,7 @@ RseNode* PAR_rse(thread_db* tdbb, CompilerScratch* csb, SSHORT rse_op)
 			break;
 
 		case blr_skip_locked:
-			if (!(rse->flags & RseNode::FLAG_WRITELOCK))
+			if (!rse->hasWriteLock())
 			{
 				PAR_error(csb,
 					Arg::Gds(isc_random) <<

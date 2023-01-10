@@ -717,14 +717,53 @@ private:
 class RseNode final : public TypedNode<RecordSourceNode, RecordSourceNode::TYPE_RSE>
 {
 public:
-	static const USHORT FLAG_VARIANT			= 0x01;	// variant (not invariant?)
-	static const USHORT FLAG_SINGULAR			= 0x02;	// singleton select
-	static const USHORT FLAG_WRITELOCK			= 0x04;	// locked for write
-	static const USHORT FLAG_SCROLLABLE			= 0x08;	// scrollable cursor
-	static const USHORT FLAG_DSQL_COMPARATIVE	= 0x10;	// transformed from DSQL ComparativeBoolNode
-	static const USHORT FLAG_OPT_FIRST_ROWS		= 0x20;	// optimize retrieval for first rows
-	static const USHORT FLAG_LATERAL			= 0x40;	// lateral derived table
-	static const USHORT FLAG_SKIP_LOCKED		= 0x80;	// skip locked
+	enum : USHORT
+	{
+		FLAG_VARIANT			= 0x01,	// variant (not invariant?)
+		FLAG_SINGULAR			= 0x02,	// singleton select
+		FLAG_WRITELOCK			= 0x04,	// locked for write
+		FLAG_SCROLLABLE			= 0x08,	// scrollable cursor
+		FLAG_DSQL_COMPARATIVE	= 0x10,	// transformed from DSQL ComparativeBoolNode
+		FLAG_OPT_FIRST_ROWS		= 0x20,	// optimize retrieval for first rows
+		FLAG_LATERAL			= 0x40,	// lateral derived table
+		FLAG_SKIP_LOCKED		= 0x80,	// skip locked
+		FLAG_SUB_QUERY			= 0x100	// sub-query
+	};
+
+	bool isInvariant() const
+	{
+		return (flags & FLAG_VARIANT) == 0;
+	}
+
+	bool isSingular() const
+	{
+		return (flags & FLAG_SINGULAR) != 0;
+	}
+
+	bool isScrollable() const
+	{
+		return (flags & FLAG_SCROLLABLE) != 0;
+	}
+
+	bool isLateral() const
+	{
+		return (flags & FLAG_LATERAL) != 0;
+	}
+
+	bool isSubQuery() const
+	{
+		return (flags & FLAG_SUB_QUERY) != 0;
+	}
+
+	bool hasWriteLock() const
+	{
+		return (flags & FLAG_WRITELOCK) != 0;
+	}
+
+	bool hasSkipLocked() const
+	{
+		return (flags & FLAG_SKIP_LOCKED) != 0;
+	}
 
 	explicit RseNode(MemoryPool& pool)
 		: TypedNode<RecordSourceNode, RecordSourceNode::TYPE_RSE>(pool),

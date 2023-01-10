@@ -2951,9 +2951,7 @@ void RseNode::pass1Source(thread_db* tdbb, CompilerScratch* csb, RseNode* rse,
 	// where we are just trying to inner join more than 2 streams. If possible,
 	// try to flatten the tree out before we go any further.
 
-	const auto isLateral = (this->flags & RseNode::FLAG_LATERAL) != 0;
-
-	if (!isLateral &&
+	if (!isLateral() &&
 		rse->rse_jointype == blr_inner &&
 		rse_jointype == blr_inner &&
 		!rse_sorted && !rse_projection &&
@@ -3046,8 +3044,6 @@ RecordSource* RseNode::compile(thread_db* tdbb, Optimizer* opt, bool innerSubStr
 
 	BoolExprNodeStack conjunctStack;
 
-	const auto isLateral = (this->flags & RseNode::FLAG_LATERAL) != 0;
-
 	// pass RseNode boolean only to inner substreams because join condition
 	// should never exclude records from outer substreams
 	if (opt->isInnerJoin() || (opt->isLeftJoin() && innerSubStream))
@@ -3060,7 +3056,7 @@ RecordSource* RseNode::compile(thread_db* tdbb, Optimizer* opt, bool innerSubStr
 
 		StreamStateHolder stateHolder(csb, opt->getOuterStreams());
 
-		if (opt->isLeftJoin() || isLateral)
+		if (opt->isLeftJoin() || isLateral())
 		{
 			stateHolder.activate();
 

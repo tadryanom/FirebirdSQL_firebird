@@ -1302,14 +1302,17 @@ DeclareCursorNode* DeclareCursorNode::pass2(thread_db* tdbb, CompilerScratch* cs
 	ExprNode::doPass2(tdbb, csb, rse.getAddress());
 	ExprNode::doPass2(tdbb, csb, refs.getAddress());
 
+	MetaName cursorName;
+	csb->csb_dbg_info->curIndexToName.get(cursorNumber, cursorName);
+
 	// Finish up processing of record selection expressions.
 
 	RecordSource* const rsb = CMP_post_rse(tdbb, csb, rse.getObject());
-	csb->csb_fors.add(rsb);
 
-	cursor = FB_NEW_POOL(*tdbb->getDefaultPool()) Cursor(csb, rsb, rse->rse_invariants,
-		(rse->flags & RseNode::FLAG_SCROLLABLE), true);
-	csb->csb_dbg_info->curIndexToName.get(cursorNumber, cursor->name);
+	cursor = FB_NEW_POOL(*tdbb->getDefaultPool())
+		Cursor(csb, rsb, rse, true, line, column, cursorName);
+
+	csb->csb_fors.add(cursor);
 
 	StreamList cursorStreams;
 	cursor->getAccessPath()->findUsedStreams(cursorStreams);
@@ -5065,15 +5068,16 @@ StmtNode* ForNode::pass2(thread_db* tdbb, CompilerScratch* csb)
 	// Finish up processing of record selection expressions.
 
 	RecordSource* const rsb = CMP_post_rse(tdbb, csb, rse.getObject());
-	csb->csb_fors.add(rsb);
 
-	cursor = FB_NEW_POOL(*tdbb->getDefaultPool()) Cursor(csb, rsb, rse->rse_invariants,
-		(rse->flags & RseNode::FLAG_SCROLLABLE), !(marks & MARK_AVOID_COUNTERS));
+	cursor = FB_NEW_POOL(*tdbb->getDefaultPool())
+		Cursor(csb, rsb, rse, !(marks & MARK_AVOID_COUNTERS), line, column);
 	// ASF: We cannot define the name of the cursor here, but this is not a problem,
 	// as implicit cursors are always positioned in a valid record, and the name is
 	// only used to raise isc_cursor_not_positioned.
 
-	if (rse->flags & RseNode::FLAG_WRITELOCK)
+	csb->csb_fors.add(cursor);
+
+	if (rse->hasWriteLock())
 		withLock = true;
 
 	if (marks & MARK_MERGE)
