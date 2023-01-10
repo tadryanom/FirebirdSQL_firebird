@@ -85,7 +85,7 @@ jobs:
           echo "snapshot_name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
 
       - name: Snapshot - delete old assets
-        uses: asfernandes/delete-release-assets@v2
+        uses: mknejp/delete-release-assets@v1
         if: steps.snapshot_prepare.outputs.snapshot_name
         with:
           repository: FirebirdSQL/snapshots
@@ -270,7 +270,7 @@ jobs:
           echo snapshot_name=${{ github.ref_name }}>> %GITHUB_OUTPUT%
 
       - name: Snapshot - delete old assets
-        uses: asfernandes/delete-release-assets@v2
+        uses: mknejp/delete-release-assets@v1
         if: steps.snapshot_prepare.outputs.snapshot_name
         with:
           repository: FirebirdSQL/snapshots
@@ -451,7 +451,7 @@ jobs:
           echo "snapshot_name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
 
       - name: Snapshot - delete old assets
-        uses: asfernandes/delete-release-assets@v2
+        uses: mknejp/delete-release-assets@v1
         if: steps.snapshot_prepare.outputs.snapshot_name
         with:
           repository: FirebirdSQL/snapshots
@@ -632,7 +632,7 @@ jobs:
           echo "snapshot_name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
 
       - name: Snapshot - delete old assets
-        uses: asfernandes/delete-release-assets@v2
+        uses: mknejp/delete-release-assets@v1
         if: steps.snapshot_prepare.outputs.snapshot_name
         with:
           repository: FirebirdSQL/snapshots

@@ -227,3 +227,8 @@
 	FIELD(fld_short_description, nam_short_description, dtype_varying, 255 * METADATA_BYTES_PER_CHAR, dsc_text_type_metadata, NULL	, true		, ODS_13_1)
 	FIELD(fld_seconds_interval, nam_seconds_interval, dtype_long, sizeof(SLONG)				, 0							, NULL		, true		, ODS_13_1)
 	FIELD(fld_prof_ses_id	, nam_prof_ses_id	, dtype_int64	, sizeof(SINT64)			, 0							, NULL		, true		, ODS_13_1)
+
+	FIELD(fld_butil_handle	, nam_butil_handle	, dtype_long	, sizeof(SLONG)				, 0							, NULL		, true		, ODS_13_1)
+	FIELD(fld_blob			, nam_blob			, dtype_blob	, BLOB_SIZE					, isc_blob_untyped			, NULL		, true		, ODS_13_1)
+	FIELD(fld_varybinary_max, nam_varbinary_max	, dtype_varying	, MAX_VARY_COLUMN_SIZE		, 0							, NULL		, true		, ODS_13_1)
+	FIELD(fld_integer		, nam_integer		, dtype_long	, sizeof(SLONG)				, 0							, NULL		, true		, ODS_13_1)

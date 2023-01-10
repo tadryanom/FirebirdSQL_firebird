@@ -1210,6 +1210,17 @@ void TRA_release_transaction(thread_db* tdbb, jrd_tra* transaction, Jrd::TraceTr
 
 	if (!transaction->tra_outer)
 	{
+		for (auto& item : transaction->tra_blob_util_map)
+		{
+			auto blb = item.second;
+
+			// Let temporary blobs be cancelled in the block below.
+			if (!(blb->blb_flags & BLB_temporary))
+				blb->BLB_close(tdbb);
+		}
+
+		transaction->tra_blob_util_map.clear();
+
 		if (transaction->tra_blobs->getFirst())
 		{
 			while (true)

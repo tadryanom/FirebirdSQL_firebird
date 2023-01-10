@@ -14,13 +14,13 @@
 # Copyright (C) 2000 Inprise Corporation
 # All Rights Reserved.
 # Contributor(s): ______________________________________.
-# Start of file prefix.freebsd_powerpc64el:	$(VERSION)	@PLATFORM@
+# Start of file prefix.freebsd_powerpc:	$(VERSION)	@PLATFORM@
 #
 # 2 Oct 2002, Nickolay Samofatov - Major Cleanup
 
 EXE_LINK_OPTIONS := $(LDFLAGS) $(THR_FLAGS) $(UNDEF_FLAGS) $(LIB_PATH_OPTS) -Wl,-rpath,../gen/firebird/lib
 
-COMMON_FLAGS=-DFREEBSD -DPPC64EL -pipe -MMD -fPIC -fsigned-char
+COMMON_FLAGS=-DFREEBSD -DPPC -pipe -MMD -fPIC -fsigned-char
 PROD_FLAGS=$(COMMON_FLAGS) -O3 -g -fno-builtin -Wno-deprecated
 DEV_FLAGS=$(COMMON_FLAGS) -ggdb -p -Wall -Wno-non-virtual-dtor
 

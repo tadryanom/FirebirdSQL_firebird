@@ -25,6 +25,7 @@
 #ifndef COMMON_REF_COUNTED_H
 #define COMMON_REF_COUNTED_H
 
+#include "fb_exception.h"
 #include "../common/classes/fb_atomic.h"
 #include "../common/gdsassert.h"
 

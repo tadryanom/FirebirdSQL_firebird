@@ -9,7 +9,7 @@ BuildType=T
 MajorVer=5
 MinorVer=0
 RevNo=0
-BuildNum=843
+BuildNum=888
 
 NowAt=`pwd`
 cd `dirname $0`
@@ -20,7 +20,7 @@ Root=`dirname $Root`
 
 if [ "$SPECIAL_BUILD_SUFFIX" = "" ]; then
 # Normal builds
-SuffixKind="Initial"
+SuffixKind="Beta 1"
 SuffixVer=""
 BuildSuffix="Firebird $MajorVer.$MinorVer"
 [ "$SuffixKind" = "" ] || BuildSuffix="$BuildSuffix $SuffixKind"

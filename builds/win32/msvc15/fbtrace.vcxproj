@@ -115,7 +115,7 @@
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>mpr.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>re2.lib;mpr.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\..\extern\icu\$(Platform)\release\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
@@ -135,7 +135,7 @@
       </PrecompiledHeader>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>mpr.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>re2.lib;mpr.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\..\extern\icu\$(Platform)\release\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
@@ -153,7 +153,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;DEV_BUILD;_WINDOWS;_USRDLL;SUPERCLIENT;FBTRACE_EXPORTS;NAMESPACE=Vulcan;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>mpr.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>re2.lib;mpr.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\..\extern\icu\$(Platform)\release\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
@@ -177,7 +177,7 @@
       </PrecompiledHeader>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>mpr.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>re2.lib;mpr.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\..\extern\icu\$(Platform)\release\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>

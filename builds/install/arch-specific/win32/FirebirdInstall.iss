@@ -139,7 +139,7 @@
 ; even Windows 7 are now deprecated and hopefully no production install of
 ; W2K8 R2 is unpatched. If necessary we can define 'support_legacy_windows' to
 ; roll back this new feature but users who need to deploy to what are now
-; ancient versions of windows are advised to manually install Firebird 4.0 with
+; ancient versions of windows are advised to manually install Firebird with
 ; the zip package.
 #ifdef support_legacy_windows
 #define MINVER "6.0"

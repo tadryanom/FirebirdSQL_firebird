@@ -6853,8 +6853,6 @@ void DatabaseOptions::get(const UCHAR* dpb, USHORT dpb_length, bool& invalid_cli
  *	Parse database parameter block picking up options and things.
  *
  **************************************/
-	SSHORT num_old_files = 0;
-
 	dpb_buffers = 0;
 	dpb_sweep_interval = -1;
 	dpb_overwrite = false;
@@ -6961,10 +6959,7 @@ void DatabaseOptions::get(const UCHAR* dpb, USHORT dpb_length, bool& invalid_cli
 			break;
 
 		case isc_dpb_old_file:
-			//if (num_old_files >= MAX_OLD_FILES) complain here, for now.
-				ERR_post(Arg::Gds(isc_num_old_files));
-			// following code is never executed now !
-			num_old_files++;
+			ERR_post(Arg::Gds(isc_num_old_files));
 			break;
 
 		case isc_dpb_wal_chkptlen:
@@ -7652,7 +7647,7 @@ void release_attachment(thread_db* tdbb, Jrd::Attachment* attachment, XThreadEns
 	attachment->att_replicator = nullptr;
 
 	if (attachment->att_dsql_instance)
-		attachment->att_dsql_instance->dbb_statement_cache->purge(tdbb);
+		attachment->att_dsql_instance->dbb_statement_cache->shutdown(tdbb);
 
 	while (attachment->att_repl_appliers.hasData())
 	{

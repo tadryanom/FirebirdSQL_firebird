@@ -104,8 +104,8 @@ static processing_state show_func(const SCHAR*);
 static processing_state show_generators(const SCHAR*);
 static void show_index(SCHAR*, SCHAR*, const SSHORT, const SSHORT, const SSHORT);
 static processing_state show_indices(const SCHAR* const*);
-static processing_state show_proc(const SCHAR*);
-static processing_state show_packages(const SCHAR* package_name);
+static processing_state show_proc(const SCHAR*, bool);
+static processing_state show_packages(const SCHAR* package_name, bool, const SCHAR* = NULL);
 static processing_state show_role(const SCHAR*, bool, const char* msg = NULL);
 static processing_state show_secclass(const char* object, const char* opt);
 static processing_state show_table(const SCHAR*, bool);
@@ -2245,6 +2245,14 @@ processing_state SHOW_metadata(const SCHAR* const* cmd, SCHAR** lcmd)
 				show_role(NULL, true);
 				break;
 
+			case ShowOptions::procedure:
+				show_proc(NULL, true);
+				break;
+
+			case ShowOptions::package:
+				show_packages(NULL, true);
+				break;
+
 			default:
 				return ps_ERR;
 			}
@@ -2257,6 +2265,9 @@ processing_state SHOW_metadata(const SCHAR* const* cmd, SCHAR** lcmd)
 			show_all_tables(1);
 			IUTILS_msg_get(MSG_FUNCTIONS, msg);
 			show_sys_functions(msg);
+			show_proc(NULL, true);
+			IUTILS_msg_get(MSG_PACKAGES, msg);
+			show_packages(NULL, true, msg);
 			IUTILS_msg_get(MSG_COLLATIONS, msg);
 			show_collations("", 1, msg, true);
 			IUTILS_msg_get(MSG_ROLES, msg);
@@ -2531,10 +2542,10 @@ processing_state SHOW_metadata(const SCHAR* const* cmd, SCHAR** lcmd)
 		if (*cmd[2] == '"')
 		{
 			remove_delimited_double_quotes(lcmd[2]);
-			ret = show_proc(lcmd[2]);
+			ret = show_proc(lcmd[2], false);
 		}
 		else
-			ret = show_proc(cmd[2]);
+			ret = show_proc(cmd[2], false);
 
 		if (ret == OBJECT_NOT_FOUND)
 		{
@@ -2673,10 +2684,10 @@ processing_state SHOW_metadata(const SCHAR* const* cmd, SCHAR** lcmd)
 		if (*cmd[2] == '"')
 		{
 			remove_delimited_double_quotes(lcmd[2]);
-			ret = show_packages(lcmd[2]);
+			ret = show_packages(lcmd[2], false);
 		}
 		else
-			ret = show_packages(cmd[2]);
+			ret = show_packages(cmd[2], false);
 
 		if (ret == OBJECT_NOT_FOUND)
 		{
@@ -4865,7 +4876,7 @@ static processing_state show_indices(const SCHAR* const* cmd)
 }
 
 
-static processing_state show_packages(const SCHAR* package_name)
+static processing_state show_packages(const SCHAR* package_name, bool sys, const SCHAR* msg)
 {
 /*************************************
 *
@@ -4881,15 +4892,22 @@ static processing_state show_packages(const SCHAR* package_name)
 
 	bool first = true;
 
-	if (!*package_name)
+	if (!(package_name && *package_name))
 	{
 		//  List all package names in columns
-		FOR PACK IN RDB$PACKAGES WITH
-			(PACK.RDB$SYSTEM_FLAG NE 1 OR PACK.RDB$SYSTEM_FLAG MISSING)
+		FOR PACK IN RDB$PACKAGES
 			SORTED BY PACK.RDB$PACKAGE_NAME
 		{
-			first = false;
-			isqlGlob.printf("%s%s", fb_utils::exact_name(PACK.RDB$PACKAGE_NAME), NEWLINE);
+			bool system_flag = !PACK.RDB$SYSTEM_FLAG.NULL && PACK.RDB$SYSTEM_FLAG > 0;
+
+			if (system_flag == sys)
+			{
+				if (first && msg)
+					isqlGlob.printf("%s%s", msg, NEWLINE);
+				first = false;
+
+				isqlGlob.printf("%s%s", fb_utils::exact_name(PACK.RDB$PACKAGE_NAME), NEWLINE);
+			}
 		}
 		END_FOR
 		ON_ERROR
@@ -5095,7 +5113,7 @@ processing_state SHOW_maps(bool extract, const SCHAR* map_name)
 }
 
 
-static processing_state show_proc(const SCHAR* procname)
+static processing_state show_proc(const SCHAR* procname, bool sys)
 {
 /**************************************
  *
@@ -5124,68 +5142,74 @@ static processing_state show_proc(const SCHAR* procname)
 		FOR PRC IN RDB$PROCEDURES
 			SORTED BY PRC.RDB$PACKAGE_NAME, PRC.RDB$PROCEDURE_NAME
 		{
-			string package;
+			bool system_flag = !PRC.RDB$SYSTEM_FLAG.NULL && PRC.RDB$SYSTEM_FLAG > 0;
 
-			if (!PRC.RDB$PACKAGE_NAME.NULL)
+			if (system_flag == sys)
 			{
-				fb_utils::exact_name(PRC.RDB$PACKAGE_NAME);
-				package = PRC.RDB$PACKAGE_NAME;
-			}
+				string package;
 
-			if (first_proc || package != prevPackage)
-			{
-				if (package.isEmpty())
-					isqlGlob.printf("Global procedures%s%s", NEWLINE, NEWLINE);
-				else
+				if (!PRC.RDB$PACKAGE_NAME.NULL)
 				{
-					if (!first_proc)
-						isqlGlob.printf("%s", NEWLINE);
-
-					isqlGlob.printf("Package: %s%s%s", package.c_str(), NEWLINE, NEWLINE);
+					fb_utils::exact_name(PRC.RDB$PACKAGE_NAME);
+					package = PRC.RDB$PACKAGE_NAME;
 				}
 
-				first_proc = false;
-			}
-
-			prevPackage = package;
-
-			// Strip trailing blanks
-
-			fb_utils::exact_name(PRC.RDB$PROCEDURE_NAME);
-			isqlGlob.printf("%s", PRC.RDB$PROCEDURE_NAME);
-
-			if (!(PRC.RDB$VALID_BLR.NULL || PRC.RDB$VALID_BLR))
-				isqlGlob.printf("; Invalid");
-
-			if (PRC.RDB$PACKAGE_NAME.NULL)
-			{
-				bool first_dep = true;
-				FOR DEP IN RDB$DEPENDENCIES WITH
-					PRC.RDB$PROCEDURE_NAME EQ DEP.RDB$DEPENDENT_NAME
-					REDUCED TO DEP.RDB$DEPENDED_ON_TYPE, DEP.RDB$DEPENDED_ON_NAME
-					SORTED BY DEP.RDB$DEPENDED_ON_TYPE, DEP.RDB$DEPENDED_ON_NAME
+				if (first_proc || package != prevPackage)
 				{
-					fb_utils::exact_name(DEP.RDB$DEPENDED_ON_NAME);
-
-					if (first_dep)
-					{
-						isqlGlob.printf("; Dependencies: ");
-						first_dep = false;
-					}
+					if (package.isEmpty())
+						isqlGlob.printf("Global procedures%s%s", NEWLINE, NEWLINE);
 					else
-						isqlGlob.printf(", ");
+					{
+						if (!first_proc)
+							isqlGlob.printf("%s", NEWLINE);
 
-					isqlGlob.printf("%s (%s)", fb_utils::exact_name(DEP.RDB$DEPENDED_ON_NAME),
-							 Object_types[DEP.RDB$DEPENDED_ON_TYPE]);
+						isqlGlob.printf("Package: %s%s%s", package.c_str(), NEWLINE, NEWLINE);
+					}
+
+					first_proc = false;
 				}
-				END_FOR
-				ON_ERROR
-					ISQL_errmsg (fbStatus);
-					return ps_ERR;
-				END_ERROR;
-			}
 
-			isqlGlob.printf(NEWLINE);
+
+				prevPackage = package;
+
+				// Strip trailing blanks
+
+				fb_utils::exact_name(PRC.RDB$PROCEDURE_NAME);
+				isqlGlob.printf("%s", PRC.RDB$PROCEDURE_NAME);
+
+				if (!(PRC.RDB$VALID_BLR.NULL || PRC.RDB$VALID_BLR))
+					isqlGlob.printf("; Invalid");
+
+				if (PRC.RDB$PACKAGE_NAME.NULL)
+				{
+					bool first_dep = true;
+					FOR DEP IN RDB$DEPENDENCIES WITH
+						PRC.RDB$PROCEDURE_NAME EQ DEP.RDB$DEPENDENT_NAME
+						REDUCED TO DEP.RDB$DEPENDED_ON_TYPE, DEP.RDB$DEPENDED_ON_NAME
+						SORTED BY DEP.RDB$DEPENDED_ON_TYPE, DEP.RDB$DEPENDED_ON_NAME
+					{
+						fb_utils::exact_name(DEP.RDB$DEPENDED_ON_NAME);
+
+						if (first_dep)
+						{
+							isqlGlob.printf("; Dependencies: ");
+							first_dep = false;
+						}
+						else
+							isqlGlob.printf(", ");
+
+						isqlGlob.printf("%s (%s)", fb_utils::exact_name(DEP.RDB$DEPENDED_ON_NAME),
+							 Object_types[DEP.RDB$DEPENDED_ON_TYPE]);
+					}
+					END_FOR
+					ON_ERROR
+						ISQL_errmsg (fbStatus);
+						return ps_ERR;
+					END_ERROR;
+				}
+
+				isqlGlob.printf(NEWLINE);
+			}
 		}
 		END_FOR
 		ON_ERROR
@@ -5195,6 +5219,8 @@ static processing_state show_proc(const SCHAR* procname)
 
 		if (first_proc)
 			return OBJECT_NOT_FOUND;
+
+		isqlGlob.printf(NEWLINE);
 		return (SKIP);
 	}
 

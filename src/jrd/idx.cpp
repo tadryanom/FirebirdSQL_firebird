@@ -919,7 +919,7 @@ void IDX_create_index(thread_db* tdbb,
 			local_status.raise();
 	}
 
-	sort.buidMergeTree();
+	sort.buildMergeTree();
 
 	if (creation.duplicates.value() == 0)
 		BTR_create(tdbb, creation, selectivity);

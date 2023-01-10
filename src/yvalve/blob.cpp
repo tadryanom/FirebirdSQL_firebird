@@ -1,6 +1,6 @@
 /*
  *	PROGRAM:	InterBase layered support library
- *	MODULE:		blob.epp
+ *	MODULE:		blob.cpp
  *	DESCRIPTION:	Dynamic blob support
  *
  * The contents of this file are subject to the Interbase Public
@@ -30,15 +30,16 @@
  */
 
 #include "firebird.h"
+#include "firebird/Message.h"
 #include "ibase.h"
 #include "../jrd/intl.h"
 #include "../yvalve/blob_proto.h"
+#include "../yvalve/YObjects.h"
 #include "../common/StatusArg.h"
 #include "../common/utils_proto.h"
+#include "../jrd/constants.h"
 
 using namespace Firebird;
-
-DATABASE DB = STATIC "yachts.lnk";
 
 static void copy_exact_name (const UCHAR*, UCHAR*, SSHORT);
 static ISC_STATUS error(ISC_STATUS* status, const Arg::StatusVector& v);
@@ -119,96 +120,120 @@ ISC_STATUS API_ROUTINE isc_blob_gen_bpb(ISC_STATUS* status,
 }
 
 
-ISC_STATUS API_ROUTINE isc_blob_lookup_desc(ISC_STATUS* status,
-											FB_API_HANDLE* db_handle,
-											FB_API_HANDLE* trans_handle,
-											const UCHAR* relation_name,
-											const UCHAR* field_name,
-											ISC_BLOB_DESC* desc, UCHAR* global)
+// Lookup the blob subtype, character set and segment size information from the metadata,
+// given a relation/procedure name and column/parameter name.
+// It will fill in the information in the BLOB_DESC.
+void iscBlobLookupDescImpl(Why::YAttachment* attachment, Why::YTransaction* transaction,
+	const UCHAR* relationName, const UCHAR* fieldName, ISC_BLOB_DESC* desc, UCHAR* global)
 {
-/***********************************************
- *
- *	i s c _ b l o b _ l o o k u p _ d e s c
- *
- ***********************************************
- *
- * Functional description
- *
- *	This routine will lookup the subtype,
- *	character set and segment size information
- *	from the metadata, given a relation/procedure name
- *	and column/parameter name.  it will fill in the information
- *	in the BLOB_DESC.
- *
- ***********************************************/
-	ISC_STATUS_ARRAY isc_status = {0};
-	isc_db_handle DB = *db_handle;
-	isc_req_handle handle = 0;
+	LocalStatus status;
+	CheckStatusWrapper statusWrapper(&status);
 
-    copy_exact_name(field_name, desc->blob_desc_field_name, sizeof(desc->blob_desc_field_name));
-    copy_exact_name(relation_name, desc->blob_desc_relation_name, sizeof(desc->blob_desc_relation_name));
+	copy_exact_name(fieldName, desc->blob_desc_field_name, sizeof(desc->blob_desc_field_name));
+	copy_exact_name(relationName, desc->blob_desc_relation_name, sizeof(desc->blob_desc_relation_name));
 
 	bool flag = false;
 
-	FOR (REQUEST_HANDLE handle TRANSACTION_HANDLE *trans_handle)
-		X IN RDB$RELATION_FIELDS CROSS Y IN RDB$FIELDS
-		WITH X.RDB$FIELD_SOURCE EQ Y.RDB$FIELD_NAME AND
-		X.RDB$RELATION_NAME EQ desc->blob_desc_relation_name AND
-		X.RDB$FIELD_NAME EQ desc->blob_desc_field_name
-		flag = true;
+	// Shared by both queries.
+	FB_MESSAGE(OutputMessage, CheckStatusWrapper,
+		(FB_INTEGER, fieldSubType)
+		(FB_INTEGER, segmentLength)
+		(FB_INTEGER, characterSetId)
+	) outputMessage(&statusWrapper, MasterInterfacePtr());
 
-	    desc->blob_desc_subtype = Y.RDB$FIELD_SUB_TYPE;
-        desc->blob_desc_charset = Y.RDB$CHARACTER_SET_ID;
-        desc->blob_desc_segment_size = Y.RDB$SEGMENT_LENGTH;
+	{	// scope
+		constexpr auto sql = R"""(
+			select f.rdb$field_sub_type,
+			       f.rdb$segment_length,
+			       f.rdb$character_set_id
+			    from rdb$relation_fields rf
+			    join rdb$fields f
+			      on f.rdb$field_name = rf.rdb$field_source
+			    where rf.rdb$relation_name = ? and
+			          rf.rdb$field_name = ?
+		)""";
 
-        if (global) {
-            copy_exact_name((UCHAR*) Y.RDB$FIELD_NAME, global, sizeof(Y.RDB$FIELD_NAME));
-        }
-	END_FOR
-    ON_ERROR
-		ISC_STATUS_ARRAY temp_status;
-		isc_release_request(temp_status, &handle);
-		fb_utils::copyStatus(status, ISC_STATUS_LENGTH, isc_status, ISC_STATUS_LENGTH);
-		return status[1];
-	END_ERROR;
+		FB_MESSAGE(InputMessage, CheckStatusWrapper,
+			(FB_VARCHAR(MAX_SQL_IDENTIFIER_LEN * 4), relationName)
+			(FB_VARCHAR(MAX_SQL_IDENTIFIER_LEN * 4), fieldName)
+		) inputMessage(&statusWrapper, MasterInterfacePtr());
+		inputMessage.clear();
 
-	isc_release_request(isc_status, &handle);
+		inputMessage->relationNameNull = FB_FALSE;
+		inputMessage->relationName.set((const char*) relationName);
 
-	if (!flag)
-	{
-		handle = 0;
+		inputMessage->fieldNameNull = FB_FALSE;
+		inputMessage->fieldName.set((const char*) fieldName);
 
-		FOR (REQUEST_HANDLE handle TRANSACTION_HANDLE *trans_handle)
-			X IN RDB$PROCEDURE_PARAMETERS
-			CROSS Y IN RDB$FIELDS
-			WITH X.RDB$FIELD_SOURCE EQ Y.RDB$FIELD_NAME AND
-				 X.RDB$PROCEDURE_NAME EQ desc->blob_desc_relation_name AND
-				 X.RDB$PACKAGE_NAME MISSING AND
-				 X.RDB$PARAMETER_NAME EQ desc->blob_desc_field_name
+		auto resultSet = makeNoIncRef(attachment->openCursor(&statusWrapper, transaction, 0, sql,
+			SQL_DIALECT_CURRENT, inputMessage.getMetadata(), inputMessage.getData(),
+			outputMessage.getMetadata(), nullptr, 0));
+		status.check();
+
+		if (resultSet->fetchNext(&statusWrapper, outputMessage.getData()) == IStatus::RESULT_OK)
+		{
 			flag = true;
 
-			desc->blob_desc_subtype = Y.RDB$FIELD_SUB_TYPE;
-			desc->blob_desc_charset = Y.RDB$CHARACTER_SET_ID;
-			desc->blob_desc_segment_size = Y.RDB$SEGMENT_LENGTH;
+			desc->blob_desc_subtype = outputMessage->fieldSubTypeNull ? 0 : outputMessage->fieldSubType;
+			desc->blob_desc_charset = outputMessage->characterSetIdNull ? 0 : outputMessage->characterSetId;
+			desc->blob_desc_segment_size = outputMessage->segmentLengthNull ? 0 : outputMessage->segmentLength;
+		}
 
-			if (global)
-				copy_exact_name((UCHAR*) Y.RDB$FIELD_NAME, global, sizeof(Y.RDB$FIELD_NAME));
-		END_FOR
-		ON_ERROR
-			ISC_STATUS_ARRAY temp_status;
-			isc_release_request(temp_status, &handle);
-			fb_utils::copyStatus(status, ISC_STATUS_LENGTH, isc_status, ISC_STATUS_LENGTH);
-			return status[1];
-		END_ERROR;
-
-		isc_release_request(isc_status, &handle);
+		status.check();
 	}
 
 	if (!flag)
-		return error(status, Arg::Gds(isc_fldnotdef) << Arg::Str((const char*)(desc->blob_desc_field_name)) <<
-														Arg::Str((const char*)(desc->blob_desc_relation_name)));
+	{
+		constexpr auto sql = R"""(
+			select f.rdb$field_sub_type,
+			       f.rdb$segment_length,
+			       f.rdb$character_set_id
+			    from rdb$procedure_parameters pp
+			    join rdb$fields f
+			      on f.rdb$field_name = pp.rdb$field_source
+			    where pp.rdb$procedure_name = ? and
+			          pp.rdb$parameter_name = ? and
+			          pp.rdb$package_name is null
+		)""";
 
-	return error(status, Arg::Gds(FB_SUCCESS));
+		FB_MESSAGE(InputMessage, CheckStatusWrapper,
+			(FB_VARCHAR(MAX_SQL_IDENTIFIER_LEN * 4), procedureName)
+			(FB_VARCHAR(MAX_SQL_IDENTIFIER_LEN * 4), fieldName)
+		) inputMessage(&statusWrapper, MasterInterfacePtr());
+		inputMessage.clear();
+
+		inputMessage->procedureNameNull = FB_FALSE;
+		inputMessage->procedureName.set((const char*) relationName);
+
+		inputMessage->fieldNameNull = FB_FALSE;
+		inputMessage->fieldName.set((const char*) fieldName);
+
+		auto resultSet = makeNoIncRef(attachment->openCursor(&statusWrapper, transaction, 0, sql,
+			SQL_DIALECT_CURRENT, inputMessage.getMetadata(), inputMessage.getData(),
+			outputMessage.getMetadata(), nullptr, 0));
+		status.check();
+
+		if (resultSet->fetchNext(&statusWrapper, outputMessage.getData()) == IStatus::RESULT_OK)
+		{
+			flag = true;
+
+			desc->blob_desc_subtype = outputMessage->fieldSubTypeNull ? 0 : outputMessage->fieldSubType;
+			desc->blob_desc_charset = outputMessage->characterSetIdNull ? 0 : outputMessage->characterSetId;
+			desc->blob_desc_segment_size = outputMessage->segmentLengthNull ? 0 : outputMessage->segmentLength;
+		}
+
+		status.check();
+	}
+
+	if (!flag)
+	{
+		(Arg::Gds(isc_fldnotdef) <<
+			Arg::Str((const char*)(desc->blob_desc_field_name)) <<
+			Arg::Str((const char*)(desc->blob_desc_relation_name))).raise();
+	}
+
+	if (global)
+		copy_exact_name(fieldName, global, sizeof(desc->blob_desc_field_name));
 }
 
 

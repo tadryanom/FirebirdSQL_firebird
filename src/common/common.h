@@ -287,6 +287,14 @@
 #define FB_CPU CpuPowerPc64el
 #endif
 
+#ifdef PPC64
+#define FB_CPU CpuPowerPc64
+#endif
+
+#ifdef PPC
+#define FB_CPU CpuPowerPc
+#endif
+
 #if defined(i386) || defined(__i386) || defined(__i386__)
 #define I386
 #define FB_CPU CpuIntel

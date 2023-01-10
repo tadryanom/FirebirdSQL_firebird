@@ -1147,15 +1147,18 @@ namespace Jrd {
 			}
 		}
 
-		EngineCheckout(Attachment* att, const char* from, bool optional = false)
+		EngineCheckout(Attachment* att, const char* from, Type type = REQUIRED)
 			: m_tdbb(nullptr), m_from(from)
 		{
-			fb_assert(optional || att);
-
-			if (att && att->att_use_count)
+			if (type != AVOID)
 			{
-				m_ref = att->getStable();
-				m_ref->getSync()->leave();
+				fb_assert(type == UNNECESSARY || att);
+
+				if (att && att->att_use_count)
+				{
+					m_ref = att->getStable();
+					m_ref->getSync()->leave();
+				}
 			}
 		}
 

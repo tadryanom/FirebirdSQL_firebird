@@ -63,9 +63,9 @@ public:
 	SSHORT m_inMgsNum;
 	SSHORT m_outMgsNum;
 	Firebird::HalfStaticArray<UCHAR, 256> m_blr;
-	ULONG m_outMsgLen;
-	ULONG m_outRecLen;
-	ULONG m_outEofOffset;
+	RCRD_LENGTH m_outMsgLen;
+	RCRD_LENGTH m_outRecLen;
+	RCRD_OFFSET m_outEofOffset;
 };
 
 class ReadRelationReq

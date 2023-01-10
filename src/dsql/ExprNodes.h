@@ -667,6 +667,13 @@ public:
 		fb_assert(false);
 	}
 
+	virtual bool possiblyUnknown(const StreamList& /*streams*/) const
+	{
+		return true;
+	}
+
+	virtual void collectStreams(SortedStreamList& streamList) const;
+
 	virtual bool computable(CompilerScratch* csb, StreamType stream,
 		bool allowOnlyCurrentStream, ValueExprNode* value);
 

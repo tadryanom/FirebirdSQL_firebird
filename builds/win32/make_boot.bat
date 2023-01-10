@@ -31,12 +31,6 @@ for %%v in ( alice auth burp dsql gpre isql jrd misc msgs examples yvalve utilit
 call :interfaces
 if "%ERRLEV%"=="1" goto :END
 
-call :btyacc
-if "%ERRLEV%"=="1" goto :END
-
-call :libcds
-if "%ERRLEV%"=="1" goto :END
-
 call :LibTom
 if "%ERRLEV%"=="1" goto :END
 
@@ -46,46 +40,63 @@ if "%ERRLEV%"=="1" goto :END
 if "%FB_TARGET_PLATFORM%"=="x64" call :ttmath
 if "%ERRLEV%"=="1" goto :END
 
-call :re2
-if "%ERRLEV%"=="1" goto :END
-
 call :zlib
 if "%ERRLEV%"=="1" goto :END
 
-@echo Generating DSQL parser...
-@call parse.bat %*
-if "%ERRLEV%"=="1" goto :END
+@if "%FB_CLIENT_ONLY%"=="" (
+	call :re2
+	if "%ERRLEV%"=="1" goto :END
 
-::=======
-call :gpre_boot
-if "%ERRLEV%"=="1" goto :END
+	call :btyacc
+	if "%ERRLEV%"=="1" goto :END
 
-::=======
-@echo Preprocessing the source files needed to build gpre and isql...
-@call preprocess.bat %FB_CONFIG% BOOT
+	call :libcds
+	if "%ERRLEV%"=="1" goto :END
 
-::=======
-call :engine
-if "%ERRLEV%"=="1" goto :END
+	echo Generating DSQL parser...
+	call parse.bat %*
+	if "%ERRLEV%"=="1" goto :END
 
-call :gpre
-if "%ERRLEV%"=="1" goto :END
+	::=======
+	call :gpre_boot
+	if "%ERRLEV%"=="1" goto :END
 
-call :isql
-if "%ERRLEV%"=="1" goto :END
+	::=======
+	echo Preprocessing the source files needed to build gpre and isql...
+	call preprocess.bat %FB_CONFIG% BOOT
+
+	::=======
+	call :engine
+	if "%ERRLEV%"=="1" goto :END
+
+	call :gpre
+	if "%ERRLEV%"=="1" goto :END
+
+	call :isql
+	if "%ERRLEV%"=="1" goto :END
+)
 
 @mkdir %FB_BIN_DIR% >nul 2>&1
 @mkdir %FB_BIN_DIR%\intl\ >nul 2>&1
 
 :: copy conf files only if not exists already
-for %%v in (databases firebird plugins replication) do (
-  if not exist %FB_BIN_DIR%\%%v.conf (
-    @copy %FB_ROOT_PATH%\builds\install\misc\%%v.conf %FB_BIN_DIR% >nul 2>&1
-  )
+for %%v in (firebird plugins) do (
+	if not exist %FB_BIN_DIR%\%%v.conf (
+		@copy %FB_ROOT_PATH%\builds\install\misc\%%v.conf %FB_BIN_DIR% >nul 2>&1
+	)
 )
 
-if not exist %FB_BIN_DIR%\intl\fbintl.conf (
-  @copy %FB_ROOT_PATH%\builds\install\misc\fbintl.conf %FB_BIN_DIR%\intl\ >nul 2>&1
+@if "%FB_CLIENT_ONLY%"=="" (
+	:: copy conf files only if not exists already
+	for %%v in (databases replication) do (
+		if not exist %FB_BIN_DIR%\%%v.conf (
+			copy %FB_ROOT_PATH%\builds\install\misc\%%v.conf %FB_BIN_DIR% >nul 2>&1
+		)
+	)
+
+	if not exist %FB_BIN_DIR%\intl\fbintl.conf (
+		copy %FB_ROOT_PATH%\builds\install\misc\fbintl.conf %FB_BIN_DIR%\intl\ >nul 2>&1
+	)
 )
 
 :: Copy ICU and zlib to the output directory
@@ -94,21 +105,19 @@ if not exist %FB_BIN_DIR%\intl\fbintl.conf (
 @copy %FB_ROOT_PATH%\extern\icu\tzdata-extract\* %FB_BIN_DIR%\tzdata >nul 2>&1
 @copy %FB_ROOT_PATH%\extern\zlib\%FB_TARGET_PLATFORM%\*.dll %FB_BIN_DIR% >nul 2>&1
 
-::=======
-@call :databases
+@if "%FB_CLIENT_ONLY%"=="" (
+	::=======
+	call :databases
 
-:: copy security db if not exists already
-if not exist %FB_BIN_DIR%\security5.fdb (
-  @copy %FB_GEN_DIR%\dbs\security5.fdb %FB_BIN_DIR%
+	:: copy security db if not exists already
+	if not exist %FB_BIN_DIR%\security5.fdb (
+		copy %FB_GEN_DIR%\dbs\security5.fdb %FB_BIN_DIR%
+	)
+
+	::=======
+	echo Preprocessing the entire source tree...
+	call preprocess.bat %FB_CONFIG%
 )
-
-::=======
-@echo Preprocessing the entire source tree...
-@call preprocess.bat %FB_CONFIG%
-
-::=======
-@call :msgs
-if "%ERRLEV%"=="1" goto :END
 
 ::=======
 @call create_msgs.bat %FB_CONFIG%
@@ -253,21 +262,6 @@ echo.
 set ERRLEV=1
 goto :EOF
 
-
-::===================
-:: BUILD messages
-:msgs
-@echo.
-@echo Building build_msg (%FB_OBJ_DIR%)...
-@call compile.bat builds\win32\%VS_VER%\FirebirdBoot build_msg_%FB_TARGET_PLATFORM%.log build_msg
-if errorlevel 1 goto :msgs2
-@goto :EOF
-:msgs2
-echo.
-echo Error building build_msg, see build_msg_%FB_TARGET_PLATFORM%.log
-echo.
-set ERRLEV=1
-goto :EOF
 
 ::==============
 :databases

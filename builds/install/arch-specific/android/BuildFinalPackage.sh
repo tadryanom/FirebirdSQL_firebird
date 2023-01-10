@@ -20,13 +20,14 @@ aStrip=${NDK_TOOLCHAIN}/bin/llvm-strip
 MakeVersion=gen/Make.Version
 Build=`grep ^BuildNum ${MakeVersion}|awk '{print $3;}'`
 Version=`grep ^FirebirdVersion ${MakeVersion}|awk '{print $3;}'`
-InitialBaseName="Firebird-${Version}.${Build}-0-android-initial-${arch}"
+PackageVersion=`grep ^PackageVersion ${MakeVersion}|awk '{print $3;}'`
+InitialBaseName="Firebird-${Version}.${Build}-${PackageVersion}-android-initial-${arch}"
 InitialDebugTar="$InitialBaseName-withDebugSymbols.tar"
 InitialDebugTarGz="$InitialDebugTar.gz"
 Stripped=strip
 
-FinalRelease="Firebird-${Version}.${Build}-0-android-${arch}.tar.gz"
-FinalDebug="Firebird-${Version}.${Build}-0-android-${arch}-withDebugSymbols.tar.gz"
+FinalRelease="Firebird-${Version}.${Build}-${PackageVersion}-android-${arch}.tar.gz"
+FinalDebug="Firebird-${Version}.${Build}-${PackageVersion}-android-${arch}-withDebugSymbols.tar.gz"
 
 [ -z "$AndroidDevicePort" ] && AndroidDevicePort=5554
 AndroidDeviceName=emulator-$AndroidDevicePort
