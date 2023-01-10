@@ -1428,6 +1428,13 @@ void INI_upgrade(thread_db* tdbb)
 				;
 		}
 
+		string msg;
+		msg.printf("Database: %s\n\t"
+				   "Failed upgrading ODS from version %u.%u to version %u.%u",
+				   attachment->att_filename.c_str(),
+				   majorVersion, minorVersion, majorVersion, ODS_CURRENT);
+		iscLogException(msg.c_str(), ex);
+
 		if (context)
 		{
 			Arg::StatusVector error(ex);
@@ -1446,6 +1453,13 @@ void INI_upgrade(thread_db* tdbb)
 
 	dbb->dbb_minor_version = header->hdr_ods_minor = ODS_CURRENT;
 	CCH_RELEASE(tdbb, &window);
+
+	string msg;
+	msg.printf("Database: %s\n\t"
+			   "Successfully upgraded ODS from version %u.%u to version %u.%u",
+			   attachment->att_filename.c_str(),
+			   majorVersion, minorVersion, majorVersion, ODS_CURRENT);
+	gds__log(msg.c_str());
 
 	// Invalidate new/modified relations in the DSQL metadata cache,
 	// thus forcing them to be reloaded on demand
