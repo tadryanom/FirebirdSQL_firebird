@@ -1481,26 +1481,6 @@ void DFW_merge_work(jrd_tra* transaction, SavNumber old_sav_number, SavNumber ne
 }
 
 
-void DFW_perform_system_work(thread_db* tdbb)
-{
-/**************************************
- *
- *	D F W _ p e r f o r m _ s y s t e m _ w o r k
- *
- **************************************
- *
- * Functional description
- *	Flush out the work left to be done in the
- *	system transaction.
- *
- **************************************/
-	SET_TDBB(tdbb);
-	Jrd::Attachment* attachment = tdbb->getAttachment();
-
-	DFW_perform_work(tdbb, attachment->getSysTransaction());
-}
-
-
 void DFW_perform_work(thread_db* tdbb, jrd_tra* transaction)
 {
 /**************************************
@@ -1677,25 +1657,6 @@ void DFW_perform_post_commit_work(jrd_tra* transaction)
 	{
 		dbb->eventManager()->deliverEvents();
 	}
-}
-
-
-DeferredWork* DFW_post_system_work(thread_db* tdbb, enum dfw_t type, const dsc* desc, USHORT id)
-{
-/**************************************
- *
- *	D F W _ p o s t _ s y s t e m _ w o r k
- *
- **************************************
- *
- * Functional description
- *	Post work to be done in the context of system transaction.
- *
- **************************************/
-	SET_TDBB(tdbb);
-	Jrd::Attachment* attachment = tdbb->getAttachment();
-
-	return DFW_post_work(attachment->getSysTransaction(), type, desc, id, "");
 }
 
 

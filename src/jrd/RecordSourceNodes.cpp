@@ -620,10 +620,10 @@ RelationSourceNode* RelationSourceNode::parse(thread_db* tdbb, CompilerScratch* 
 
 	// Scan the relation if it hasn't already been scanned for meta data
 
-	if ((!(node->relation->rel_flags & REL_scanned) || (node->relation->rel_flags & REL_being_scanned)) &&
-		((node->relation->rel_flags & REL_force_scan) || !(csb->csb_g_flags & csb_internal)))
+	if ((!(node->relation->rel_flags & REL_scanned) ||
+		(node->relation->rel_flags & REL_being_scanned)) &&
+		!(csb->csb_g_flags & csb_internal))
 	{
-		node->relation->rel_flags &= ~REL_force_scan;
 		MET_scan_relation(tdbb, node->relation);
 	}
 	else if (node->relation->rel_flags & REL_sys_triggers)

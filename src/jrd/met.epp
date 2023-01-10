@@ -1443,6 +1443,10 @@ Format* MET_format(thread_db* tdbb, jrd_rel* relation, USHORT number)
 		return format;
 	}
 
+	// System relations don't have their formats stored inside RDB$FORMATS,
+	// so it's absolutely pointless trying to find one there
+	fb_assert(!relation->isSystem());
+
 	format = NULL;
 	AutoCacheRequest request(tdbb, irq_r_format, IRQ_REQUESTS);
 
@@ -3827,10 +3831,6 @@ jrd_rel* MET_relation(thread_db* tdbb, USHORT id)
 	if (relation)
 		return relation;
 
-	// From ODS 9 onwards, the first 128 relation IDS have been
-	// reserved for system relations
-	const USHORT max_sys_rel = USER_DEF_REL_INIT_ID - 1;
-
 	relation = FB_NEW_POOL(*pool) jrd_rel(*pool);
 	(*vector)[id] = relation;
 	relation->rel_id = id;
@@ -3849,8 +3849,7 @@ jrd_rel* MET_relation(thread_db* tdbb, USHORT id)
 		lock->setKey(relation->rel_id);
 	}
 
-	// This should check system flag instead.
-	if (relation->rel_id <= max_sys_rel)
+	if (relation->rel_id < rel_MAX)
 		return relation;
 
 	{ // Scope block.
@@ -5561,10 +5560,8 @@ static bool verify_TRG_ignore_perm(thread_db* tdbb, const MetaName& trig_name)
 
 	// See if this is a system trigger, with the flag set as TRG_ignore_perm
 
-	if (INI_get_trig_flags(trig_name.c_str()) & TRG_ignore_perm)
-	{
+	if (INI_get_trig_flags(trig_name) & TRG_ignore_perm)
 		return true;
-	}
 
 	// See if this is a RI trigger
 

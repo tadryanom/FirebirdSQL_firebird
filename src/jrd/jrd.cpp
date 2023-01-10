@@ -1083,6 +1083,7 @@ namespace Jrd
 		ReplicaMode	dpb_replica_mode;
 		bool	dpb_set_db_replica;
 		bool	dpb_clear_map;
+		bool	dpb_upgrade_db;
 
 		// here begin compound objects
 		// for constructor to work properly dpb_user_name
@@ -1799,7 +1800,6 @@ JAttachment* JProvider::internalAttach(CheckStatusWrapper* user_status, const ch
 				INI_init(tdbb);
 				SHUT_init(tdbb);
 				PAG_header_init(tdbb);
-				INI_init2(tdbb);
 				PAG_init(tdbb);
 
 				if (options.dpb_set_page_buffers)
@@ -1859,7 +1859,6 @@ JAttachment* JProvider::internalAttach(CheckStatusWrapper* user_status, const ch
 				jAtt->getStable()->manualAsyncUnlock(attachment->att_flags);
 
 				INI_init(tdbb);
-				INI_init2(tdbb);
 				PAG_header(tdbb, true);
 				dbb->dbb_crypto_manager->attach(tdbb, attachment);
 			}
@@ -2056,6 +2055,18 @@ JAttachment* JProvider::internalAttach(CheckStatusWrapper* user_status, const ch
 					attachment->att_utility == Attachment::UTIL_GBAK ? USE_GBAK_UTILITY :
 					attachment->att_utility == Attachment::UTIL_GFIX ? USE_GFIX_UTILITY :
 					USE_GSTAT_UTILITY);
+			}
+
+			if (options.dpb_upgrade_db)
+			{
+				validateAccess(tdbb, attachment, USE_GFIX_UTILITY);
+				if (!CCH_exclusive(tdbb, LCK_EX, WAIT_PERIOD, NULL))
+				{
+					ERR_post(Arg::Gds(isc_lock_timeout) <<
+							 Arg::Gds(isc_obj_in_use) << Arg::Str(org_filename));
+				}
+
+				INI_upgrade(tdbb);
 			}
 
 			if (options.dpb_verify)
@@ -3057,7 +3068,6 @@ JAttachment* JProvider::createDatabase(CheckStatusWrapper* user_status, const ch
 			dbb->dbb_monitoring_data = FB_NEW_POOL(*dbb->dbb_permanent) MonitoringData(dbb);
 
 			PAG_format_header(tdbb);
-			INI_init2(tdbb);
 			PAG_format_pip(tdbb, *pageSpace);
 
 			dbb->dbb_page_manager.initTempPageSpace(tdbb);
@@ -3072,7 +3082,7 @@ JAttachment* JProvider::createDatabase(CheckStatusWrapper* user_status, const ch
 				PAG_set_no_reserve(tdbb, options.dpb_no_reserve);
 
 			fb_assert(attachment->att_user);	// set by UserId::sclInit()
-			INI_format(attachment->getUserName().c_str(), options.dpb_set_db_charset.c_str());
+			INI_format(tdbb, options.dpb_set_db_charset);
 
 			// If we have not allocated first TIP page, do it now.
 			if (!dbb->dbb_t_pages || !dbb->dbb_t_pages->count())
@@ -7243,6 +7253,9 @@ void DatabaseOptions::get(const UCHAR* dpb, USHORT dpb_length, bool& invalid_cli
 
 		case isc_dpb_worker_attach:
 			dpb_worker_attach = true;
+
+		case isc_dpb_upgrade_db:
+			dpb_upgrade_db = true;
 			break;
 
 		default:

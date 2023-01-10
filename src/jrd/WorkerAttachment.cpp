@@ -63,7 +63,6 @@ WorkerStableAttachment::WorkerStableAttachment(FbStatusVector* status, Jrd::Atta
 
 	LCK_init(tdbb, LCK_OWNER_attachment);
 	INI_init(tdbb);
-	INI_init2(tdbb);
 	PAG_header(tdbb, true);
 	PAG_attachment_id(tdbb);
 	TRA_init(attachment);

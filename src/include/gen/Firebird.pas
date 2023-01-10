@@ -3986,6 +3986,7 @@ const
 	isc_dpb_decfloat_round = byte(94);
 	isc_dpb_decfloat_traps = byte(95);
 	isc_dpb_clear_map = byte(96);
+	isc_dpb_upgrade_db = byte(97);
 	isc_dpb_parallel_workers = byte(100);
 	isc_dpb_worker_attach = byte(101);
 	isc_dpb_address = byte(1);
@@ -4222,6 +4223,7 @@ const
 	isc_spb_rpr_kill_shadows = $40;
 	isc_spb_rpr_full = $80;
 	isc_spb_rpr_icu = $0800;
+	isc_spb_rpr_upgrade_db = $1000;
 	isc_spb_res_buffers = byte(9);
 	isc_spb_res_page_size = byte(10);
 	isc_spb_res_length = byte(11);
@@ -5304,6 +5306,7 @@ const
 	 isc_wrong_proc_plan = 335545282;
 	 isc_invalid_blob_util_handle = 335545283;
 	 isc_bad_temp_blob_id = 335545284;
+	 isc_ods_upgrade_err = 335545285;
 	 isc_gfix_db_name = 335740929;
 	 isc_gfix_invalid_sw = 335740930;
 	 isc_gfix_incmp_sw = 335740932;
