@@ -240,8 +240,9 @@ void TRA_detach_request(Jrd::Request* request)
 	fb_assert(!request->req_savepoints);
 
 	// Release procedure savepoints used by this request
-	if (request->req_proc_sav_point && (request->req_flags & req_proc_fetch))
+	if (request->req_proc_sav_point)
 	{
+		fb_assert(request->req_flags & req_proc_fetch);
 		Savepoint::destroy(request->req_proc_sav_point);
 		fb_assert(!request->req_proc_sav_point);
 	}
