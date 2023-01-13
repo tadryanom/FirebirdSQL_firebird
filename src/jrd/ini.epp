@@ -965,6 +965,8 @@ void INI_init(thread_db* tdbb)
 	const int* fld;
 	for (const int* relfld = relfields; relfld[RFLD_R_NAME]; relfld = fld + 1)
 	{
+		const bool isPersistent = (relfld[RFLD_R_TYPE] == rel_persistent);
+
 		jrd_rel* relation = MET_relation(tdbb, relfld[RFLD_R_ID]);
 		relation->rel_flags |= REL_system;
 		relation->rel_flags |= MET_get_rel_flags_from_TYPE(relfld[RFLD_R_TYPE]);
@@ -1011,7 +1013,7 @@ void INI_init(thread_db* tdbb)
 
 			for (fld = relfld + RFLD_RPT; fld[RFLD_F_NAME]; fld += RFLD_F_LENGTH)
 			{
-				if (fld[RFLD_F_ODS] > ENCODE_ODS(majorVersion, minorVersion))
+				if (isPersistent && fld[RFLD_F_ODS] > ENCODE_ODS(majorVersion, minorVersion))
 					continue;
 
 				if (!formatNumber || fld[RFLD_F_ODS] == ENCODE_ODS(majorVersion, minorVersion))
@@ -1040,7 +1042,7 @@ void INI_init(thread_db* tdbb)
 
 			for (fld = relfld + RFLD_RPT; fld[RFLD_F_NAME]; fld += RFLD_F_LENGTH, ++desc)
 			{
-				if (fld[RFLD_F_ODS] > ENCODE_ODS(majorVersion, minorVersion))
+				if (isPersistent && fld[RFLD_F_ODS] > ENCODE_ODS(majorVersion, minorVersion))
 					continue;
 
 				const gfld* gfield = &gfields[fld[RFLD_F_ID]];
@@ -1072,6 +1074,10 @@ void INI_init(thread_db* tdbb)
 
 			minorVersion++;
 			formatNumber++;
+
+			// We don't need more than one format for virtual tables
+			if (!isPersistent)
+				break;
 		}
 
 		fb_assert(currentFormat < relation->rel_formats->count());
@@ -1982,6 +1988,7 @@ static void store_relation(thread_db* tdbb,
 		X.RDB$FORMAT = 0;
 		X.RDB$SYSTEM_FLAG = RDB_system;
 		X.RDB$DBKEY_LENGTH = 8;
+		X.RDB$RELATION_TYPE = relType;
 	}
 	END_STORE;
 
