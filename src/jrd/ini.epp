@@ -1003,7 +1003,8 @@ void INI_init(thread_db* tdbb)
 		relation->rel_formats = vec<Format*>::newVector(*pool, 1);
 
 		const auto majorVersion = ODS_VERSION;
-		auto minorVersion = ODS_RELEASED;
+		// We need only the latest format for virtual tables
+		auto minorVersion = isPersistent ? ODS_RELEASED : ODS_CURRENT;
 		unsigned formatNumber = 0, currentFormat = 0;
 
 		while (minorVersion <= ODS_CURRENT)
@@ -1013,7 +1014,7 @@ void INI_init(thread_db* tdbb)
 
 			for (fld = relfld + RFLD_RPT; fld[RFLD_F_NAME]; fld += RFLD_F_LENGTH)
 			{
-				if (isPersistent && fld[RFLD_F_ODS] > ENCODE_ODS(majorVersion, minorVersion))
+				if (fld[RFLD_F_ODS] > ENCODE_ODS(majorVersion, minorVersion))
 					continue;
 
 				if (!formatNumber || fld[RFLD_F_ODS] == ENCODE_ODS(majorVersion, minorVersion))
@@ -1042,7 +1043,7 @@ void INI_init(thread_db* tdbb)
 
 			for (fld = relfld + RFLD_RPT; fld[RFLD_F_NAME]; fld += RFLD_F_LENGTH, ++desc)
 			{
-				if (isPersistent && fld[RFLD_F_ODS] > ENCODE_ODS(majorVersion, minorVersion))
+				if (fld[RFLD_F_ODS] > ENCODE_ODS(majorVersion, minorVersion))
 					continue;
 
 				const gfld* gfield = &gfields[fld[RFLD_F_ID]];
@@ -1074,10 +1075,6 @@ void INI_init(thread_db* tdbb)
 
 			minorVersion++;
 			formatNumber++;
-
-			// We don't need more than one format for virtual tables
-			if (!isPersistent)
-				break;
 		}
 
 		fb_assert(currentFormat < relation->rel_formats->count());
@@ -1975,6 +1972,9 @@ static void store_relation(thread_db* tdbb,
 		X.RDB$RELATION_ID = relId;
 		PAD(relName, X.RDB$RELATION_NAME);
 
+		X.RDB$RELATION_TYPE = relType;
+		X.RDB$RELATION_TYPE.NULL = FALSE;
+
 		PAD(ownerName, X.RDB$OWNER_NAME);
 		X.RDB$OWNER_NAME.NULL = FALSE;
 
@@ -1988,7 +1988,6 @@ static void store_relation(thread_db* tdbb,
 		X.RDB$FORMAT = 0;
 		X.RDB$SYSTEM_FLAG = RDB_system;
 		X.RDB$DBKEY_LENGTH = 8;
-		X.RDB$RELATION_TYPE = relType;
 	}
 	END_STORE;
 

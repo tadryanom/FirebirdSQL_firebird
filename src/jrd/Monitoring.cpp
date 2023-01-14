@@ -1044,12 +1044,9 @@ void Monitoring::putAttachment(SnapshotData::DumpRecord& record, const Jrd::Atta
 	// statement timeout, milliseconds
 	record.storeInteger(f_mon_att_stmt_timeout, attachment->getStatementTimeout());
 
-	if (dbb->getEncodedOdsVersion() >= ODS_13_1)
-	{
-		char timeZoneBuffer[TimeZoneUtil::MAX_SIZE];
-		TimeZoneUtil::format(timeZoneBuffer, sizeof(timeZoneBuffer), attachment->att_current_timezone);
-		record.storeString(f_mon_att_session_tz, string(timeZoneBuffer));
-	}
+	char timeZoneBuffer[TimeZoneUtil::MAX_SIZE];
+	TimeZoneUtil::format(timeZoneBuffer, sizeof(timeZoneBuffer), attachment->att_current_timezone);
+	record.storeString(f_mon_att_session_tz, string(timeZoneBuffer));
 
 	record.write();
 
