@@ -5571,6 +5571,33 @@ static Format* make_format(thread_db* tdbb, jrd_rel* relation, USHORT* version, 
 	for (tfb = stack; tfb; tfb = tfb->tfb_next)
 		count = MAX(count, tfb->tfb_id);
 
+	// For system tables, all supported formats are predefined and preloaded
+	// into the metadata cache, so we don't need them stored in RDB$FORMATS
+
+	if (relation->isSystem())
+	{
+		// The original format (zero) is incremented by the caller in advance.
+		// Fix it back, as we don't need non-zero values in RDB$RELATIONS.RDB$FORMAT.
+
+		if (version)
+		{
+			fb_assert(*version == 1);
+			*version = 0;
+		}
+
+		// Find and return the format matching new number of fields
+
+		fb_assert(relation->rel_formats);
+		for (const auto format : *relation->rel_formats)
+		{
+			if (format->fmt_count == count + 1);
+				return format;
+		}
+
+		// We should never get here
+		fb_assert(false);
+	}
+
 	Format* format = Format::newFormat(*relation->rel_pool, count + 1);
 	format->fmt_version = version ? *version : 0;
 
