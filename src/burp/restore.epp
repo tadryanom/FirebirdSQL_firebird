@@ -3218,7 +3218,7 @@ void get_data(BurpGlobals* tdgbl, burp_rel* relation, WriteRelationReq* req)
 
 	RCRD_LENGTH old_length = 0;
 	IBatch* batch = req->getBatch();
-	UCHAR* sql = batch ? sql = req->getBatchMsgData() : nullptr;
+	UCHAR* sql = batch ? req->getBatchMsgData() : nullptr;
 	tdgbl->batchInlineBlobLimit = batch ? req->getBatchInlineBlobLimit() : 0;
 
 	FB_UINT64 records = 0;
