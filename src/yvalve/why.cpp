@@ -87,7 +87,6 @@ using namespace Why;
 static void badHandle(ISC_STATUS code);
 static bool isNetworkError(const IStatus* status);
 static void nullCheck(const FB_API_HANDLE* ptr, ISC_STATUS code);
-//static void saveErrorString(ISC_STATUS* status);
 static void badSqldaVersion(const short version);
 static int sqldaTruncateString(char* buffer, FB_SIZE_T size, const char* s);
 static void sqldaDescribeParameters(XSQLDA* sqlda, IMessageMetadata* parameters);
@@ -105,6 +104,8 @@ static const USHORT DESCRIBE_BUFFER_SIZE = 1024;	// size of buffer used in isc_d
 namespace Why {
 	class StatusVector;
 	extern UtilInterface utilInterface;
+
+	static bool isShutdownStarted();
 };
 
 namespace {
@@ -669,8 +670,6 @@ GlobalPtr<GenericMap<Pair<NonPooled<isc_stmt_handle, IscStatement*> > > > statem
 GlobalPtr<GenericMap<Pair<NonPooled<isc_req_handle, YRequest*> > > > requests;
 GlobalPtr<GenericMap<Pair<NonPooled<isc_blob_handle, YBlob*> > > > blobs;
 
-bool shutdownStarted = false;
-
 
 //-------------------------------------
 
@@ -1175,7 +1174,7 @@ namespace Why
 				nextRef = nxt;
 			}
 
-			if (shutdownStarted)
+			if (isShutdownStarted())
 			{
 				fini();
 				Arg::Gds(isc_att_shutdown).raise();
@@ -1326,7 +1325,7 @@ namespace Why
 			if (!shutdownMode)
 			{
 				++dispCounter;
-				if (shutdownStarted)
+				if (isShutdownStarted())
 				{
 					--dispCounter;
 					Arg::Gds(isc_att_shutdown).raise();
@@ -6593,6 +6592,15 @@ YService* Dispatcher::attachServiceManager(CheckStatusWrapper* status, const cha
 	return NULL;
 }
 
+static std::atomic<SLONG> shutdownWaiters = 0;
+static const SLONG SHUTDOWN_STARTED = 1;
+static const SLONG SHUTDOWN_STEP = 2;
+
+static bool isShutdownStarted()
+{
+	return shutdownWaiters & SHUTDOWN_STARTED;
+}
+
 void Dispatcher::shutdown(CheckStatusWrapper* userStatus, unsigned int timeout, const int reason)
 {
 	// set "process exiting" state
@@ -6603,6 +6611,19 @@ void Dispatcher::shutdown(CheckStatusWrapper* userStatus, unsigned int timeout, 
 	if (MasterInterfacePtr()->getProcessExiting())
 		return;
 
+	// wait for other threads that were waiting for shutdown
+	// that should not take too long due to shutdown started bit
+	Cleanup cleanShutCnt([&] {
+		shutdownWaiters -= SHUTDOWN_STEP;
+		while (shutdownWaiters > SHUTDOWN_STARTED)
+			Thread::yield();
+	});
+
+	// atomically increase shutdownWaiters & check for SHUTDOWN_STARTED
+	SLONG state = (shutdownWaiters += SHUTDOWN_STEP);
+	if (state & SHUTDOWN_STARTED)
+		return;
+
 	try
 	{
 		DispatcherEntry entry(userStatus, true);
@@ -6610,7 +6631,7 @@ void Dispatcher::shutdown(CheckStatusWrapper* userStatus, unsigned int timeout, 
 		static GlobalPtr<Mutex> singleShutdown;
 		MutexLockGuard guard(singleShutdown, FB_FUNCTION);
 
-		if (shutdownStarted)
+		if (isShutdownStarted())
 			return;
 
 		StatusVector status(NULL);
@@ -6646,7 +6667,7 @@ void Dispatcher::shutdown(CheckStatusWrapper* userStatus, unsigned int timeout, 
 		// Shutdown yValve
 		// Since this moment no new thread will be able to enter yValve.
 		// Existing threads continue to run inside it - later do our best to close them.
-		shutdownStarted = true;
+		shutdownWaiters |= SHUTDOWN_STARTED;
 
 		// Shutdown providers (if any present).
 		for (GetPlugins<IProvider> providerIterator(IPluginManager::TYPE_PROVIDER);
