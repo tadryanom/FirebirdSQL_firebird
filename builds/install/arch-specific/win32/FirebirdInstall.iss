@@ -242,7 +242,7 @@
 ;This location is relative to SourceDir (declared below)
 #define FilesDir="output_" + PlatformTarget + "_" + ConfigurationTarget
 #if PlatformTarget == "x64"
-#define WOW64Dir="output_win32"
+#define WOW64Dir="output_Win32" + "_" + ConfigurationTarget
 #endif
 
 ;BaseVer should be used for all FB_MAJOR_VER.FB_MINOR_VER installs.
