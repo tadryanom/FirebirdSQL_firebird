@@ -39,7 +39,7 @@ fi
 
 }
 
-errFile="~/gitFsckErr.buildNo"
+errFile=~/gitFsckErr.buildNo
 git fsck --strict >$errFile 2>&1 || exit
 rm -f $errFile
 
