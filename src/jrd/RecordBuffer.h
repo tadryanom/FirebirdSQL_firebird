@@ -30,6 +30,9 @@
 
 namespace Jrd {
 
+class Format;
+class Record;
+
 class RecordBuffer : public Firebird::PermanentStorage
 {
 public:
