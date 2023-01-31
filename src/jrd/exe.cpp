@@ -987,8 +987,7 @@ void EXE_unwind(thread_db* tdbb, Request* request)
 				continue;
 
 			auto impure = localTable->getImpure(tdbb, request, false);
-			delete impure->recordBuffer;
-			impure->recordBuffer = nullptr;
+			impure->recordBuffer->reset();
 		}
 
 		release_blobs(tdbb, request);

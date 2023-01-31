@@ -1447,10 +1447,7 @@ const StmtNode* DeclareLocalTableNode::execute(thread_db* tdbb, Request* request
 	if (request->req_operation == Request::req_evaluate)
 	{
 		if (auto& recordBuffer = getImpure(tdbb, request, false)->recordBuffer)
-		{
-			delete recordBuffer;
-			recordBuffer = nullptr;
-		}
+			recordBuffer->reset();
 
 		request->req_operation = Request::req_return;
 	}
@@ -9214,10 +9211,7 @@ const StmtNode* TruncateLocalTableNode::execute(thread_db* tdbb, Request* reques
 		const auto localTable = request->getStatement()->localTables[tableNumber];
 
 		if (auto& recordBuffer = localTable->getImpure(tdbb, request, false)->recordBuffer)
-		{
-			delete recordBuffer;
-			recordBuffer = nullptr;
-		}
+			recordBuffer->reset();
 
 		request->req_operation = Request::req_return;
 	}
