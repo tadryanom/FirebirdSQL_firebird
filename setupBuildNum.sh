@@ -39,10 +39,14 @@ fi
 
 }
 
+errFile="~/gitFsckErr.buildNo"
+git fsck --strict >$errFile 2>&1 || exit
+rm -f $errFile
+
 git fetch --all
 
-processBranch master 0 $v50Filter
-processBranch v4.0-release 0 $v40Filter
+processBranch master 1 $v50Filter
+processBranch v4.0-release 4 $v40Filter
 processBranch B3_0_Release $v30Offset
 processBranch B2_5_Release $v25Offset
 
