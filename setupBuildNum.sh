@@ -24,6 +24,11 @@ OrgBuildNo=$(grep "FB_BUILD_NO" $BuildNoFile | cut -d'"' -f2)
 Count=$(git rev-list $Filter --count $Branch)
 Skip1=$(git rev-list $Filter --grep="increment build number" --count $Branch)
 Skip2=$(git rev-list $Filter --grep="nightly update" --count $Branch)
+
+git rev-list $Filter $Branch >~/Count.$Branch
+git rev-list $Filter --grep="increment build number" $Branch >~/Skip1.$Branch
+git rev-list $Filter --grep="nightly update" $Branch >~/Skip2.$Branch
+
 NewBuildNo=$(($Count-$Skip1-$Skip2+$Adjust))
 
 if [ "$NewBuildNo" != "$OrgBuildNo" ]; then
