@@ -1,7 +1,7 @@
 #!/bin/sh
 
-v50Filter="--after=05.05.2021"
-v40Filter="--after=28.02.2016"
+v50Filter="054431fce7650c0d58df3f9a4100ea98d215486e"		# May 5 2021, Implemented Batch::cancel() over the wire
+v40Filter="bb46a0e8310de196104bcca78fda2e0c1ea77bb5"		# Feb 28 2016, Set up the new version
 v30Offset=15471
 v25Offset=13822
 
@@ -10,6 +10,13 @@ processBranch() {
 Branch="$1"
 Adjust="$2"
 Filter="$3"
+
+if [ "$Filter" ]
+then
+	Range="$Filter..$Branch"
+else
+	Range="$Branch"
+fi
 
 git checkout $Branch
 git reset --hard origin/$Branch
@@ -21,13 +28,13 @@ BuildNoFile="src/jrd/build_no.h"
 
 OrgBuildNo=$(grep "FB_BUILD_NO" $BuildNoFile | cut -d'"' -f2)
 
-Count=$(git rev-list $Filter --count $Branch)
-Skip1=$(git rev-list $Filter --grep="increment build number" --count $Branch)
-Skip2=$(git rev-list $Filter --grep="nightly update" --count $Branch)
+Count=$(git rev-list --count $Range)
+Skip1=$(git rev-list --grep="increment build number" --count $Range)
+Skip2=$(git rev-list --grep="nightly update" --count $Range)
 
-git rev-list $Filter $Branch >~/Count.$Branch
-git rev-list $Filter --grep="increment build number" $Branch >~/Skip1.$Branch
-git rev-list $Filter --grep="nightly update" $Branch >~/Skip2.$Branch
+git rev-list $Range >~/Count.$Branch
+git rev-list --grep="increment build number" $Range >~/Skip1.$Branch
+git rev-list --grep="nightly update" $Range >~/Skip2.$Branch
 
 NewBuildNo=$(($Count-$Skip1-$Skip2+$Adjust))
 
@@ -50,8 +57,8 @@ rm -f $errFile
 
 git fetch --all
 
-processBranch master 1 $v50Filter
-processBranch v4.0-release 4 $v40Filter
+processBranch master 0 $v50Filter
+processBranch v4.0-release 0 $v40Filter
 processBranch B3_0_Release $v30Offset
 processBranch B2_5_Release $v25Offset
 
