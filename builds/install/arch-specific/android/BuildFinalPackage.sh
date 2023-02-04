@@ -3,12 +3,14 @@ set -e
 
 arch=${1}
 
-case $OSTYPE in
-	darwin*)
+OS=`uname -s`
+
+case $OS in
+	Darwin)
 		NDK_TOOLCHAIN_NAME=darwin-x86_64
 		TAR_OPTS="--numeric-owner --uid=0 --gid=0"
 		FIND_EXEC_OPTS="-perm +0111" ;;
-	linux*)
+	Linux)
 		NDK_TOOLCHAIN_NAME=linux-x86_64
 		TAR_OPTS="--numeric-owner --owner=0 --group=0"
 		FIND_EXEC_OPTS="-executable" ;;
