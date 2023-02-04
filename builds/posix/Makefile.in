@@ -188,17 +188,17 @@ endif
 	CXX="$(CXX)" CXXFLAGS="$(CXXFLAGS)" $(MAKE) -C $(ROOT)/extern/cloop TARGET=release WITH_FPC=0 BUILD_DIR=$(TMP_ROOT)/cloop OUT_DIR=$(GEN_ROOT)/$(TARGET)/cloop core
 
 	CC="$(CC)" CFLAGS="$(CFLAGS)" AR="$(AR)" $(MAKE) -C $(ROOT)/extern/decNumber
-	ln -sf $(ROOT)/extern/decNumber/libdecFloat.a $(LIB)
+	ln -sf $(ROOT)/extern/decNumber/libdecFloat.a $(STATIC_LIB)
 
 ifeq ($(ABSEIL_BUILD_FLG),Y)
 	CXX="$(CXX)" CXXFLAGS="$(CXXFLAGS)" $(MAKE) -C $(ROOT)/extern/int128/absl/numeric
-	ln -sf $(ROOT)/extern/int128/absl/numeric/libi128.a $(LIB)
+	ln -sf $(ROOT)/extern/int128/absl/numeric/libi128.a $(STATIC_LIB)
 endif
 
 ifeq ($(CLIENT_ONLY_FLG),N)
 ifeq ($(RE2_BUILD_FLG),Y)
 	CXX="$(CXX)" CXXFLAGS="$(CXXFLAGS) -O3 -g -fPIC" AR="$(AR)" $(MAKE) -C $(ROOT)/extern/re2
-	ln -sf $(ROOT)/extern/re2/obj/libre2.a $(LIB)
+	ln -sf $(ROOT)/extern/re2/obj/libre2.a $(STATIC_LIB)
 endif
 
 	$(MAKE) libcds
@@ -251,7 +251,7 @@ export_lists: $(ALLVERS)
 #
 
 .PHONY:	tommath
-TOMMATH_LIB=$(LIB)/libtommath.a
+TOMMATH_LIB=$(STATIC_LIB)/libtommath.a
 TOM_Objs=$(addprefix ../extern/libtommath/,$(call doObjects,$(call dirFiles,../extern/libtommath)))
 
 tommath:	$(TOMMATH_LIB)
@@ -265,7 +265,7 @@ $(TOMMATH_LIB):	$(TOM_Objs)
 #
 
 .PHONY:	tomcrypt
-TOMCRYPT_LIB=$(LIB)/libtomcrypt.a
+TOMCRYPT_LIB=$(STATIC_LIB)/libtomcrypt.a
 
 TOM_Src:=$(shell find ../extern/libtomcrypt/src -name '*.c' -print)
 TOM_Objs=$(call doObjects,$(TOM_Src))
@@ -281,7 +281,7 @@ $(TOMCRYPT_LIB):	$(TOM_Objs)
 #
 
 .PHONY:	re2
-RE2_LIB:=$(LIB)/libre2.a
+RE2_LIB:=$(STATIC_LIB)/libre2.a
 RE2_DIR:=../extern/re2/
 
 RE2_Util:=rune.cc strutil.cc
@@ -307,9 +307,9 @@ libcds:
 	AR="$(AR)" $(MAKE) -C $(LIBCDS)/lib/$(TARGET)
 
 ifeq ($(TARGET),Debug)
-	ln -sf $(LIBCDS)/lib/$(TARGET)/bin/libcds-s_d.a $(LIB)/libcds.a
+	ln -sf $(LIBCDS)/lib/$(TARGET)/bin/libcds-s_d.a $(STATIC_LIB)/libcds.a
 else
-	ln -sf $(LIBCDS)/lib/$(TARGET)/bin/libcds-s.a $(LIB)/libcds.a
+	ln -sf $(LIBCDS)/lib/$(TARGET)/bin/libcds-s.a $(STATIC_LIB)/libcds.a
 endif
 
 #___________________________________________________________________________
@@ -388,9 +388,9 @@ ifeq ($(CLIENT_ONLY_FLG),N)
 	$(MAKE) libcds
 endif
 	CC="$(CC)" CFLAGS="$(CFLAGS)" AR="$(AR)" $(MAKE) -C $(ROOT)/extern/decNumber
-	ln -sf $(ROOT)/extern/decNumber/libdecFloat$(CROSS).a $(LIB)
+	ln -sf $(ROOT)/extern/decNumber/libdecFloat$(CROSS).a $(STATIC_LIB)
 	CXX="$(CXX)" CXXFLAGS="$(CXXFLAGS)" $(MAKE) -C $(ROOT)/extern/int128/absl/numeric
-	ln -sf $(ROOT)/extern/int128/absl/numeric/libi128$(CROSS).a $(LIB)
+	ln -sf $(ROOT)/extern/int128/absl/numeric/libi128$(CROSS).a $(STATIC_LIB)
 	$(MAKE) cross_rest
 	$(MAKE) yvalve
 ifeq ($(CLIENT_ONLY_FLG),Y)
@@ -418,7 +418,7 @@ $(COMMON_LIB):	$(Common_Objects)
 	$(STATICLIB_LINK) $@ $^
 
 $(COMMON_TEST): $(Common_Test_Objects) $(COMMON_LIB)
-	$(EXE_LINK) $(EXE_LINK_OPTIONS) $^ -o $@ -L$(LIB) $(LINK_LIBS)
+	$(EXE_LINK) $(EXE_LINK_OPTIONS) $^ -o $@ -L$(LIB) -L$(STATIC_LIB) $(LINK_LIBS)
 
 #___________________________________________________________________________
 # gpre_boot
@@ -427,7 +427,7 @@ $(COMMON_TEST): $(Common_Test_Objects) $(COMMON_LIB)
 boot: $(GPRE_BOOT)
 
 $(GPRE_BOOT):	$(GPRE_Boot_Objects) $(COMMON_LIB)
-	$(EXE_LINK) $(EXE_LINK_OPTIONS) $^ -o $@ -L$(LIB) $(LINK_LIBS)
+	$(EXE_LINK) $(EXE_LINK_OPTIONS) $^ -o $@ -L$(LIB) -L$(STATIC_LIB) $(LINK_LIBS)
 	-$(RM) $(GPRE_CURRENT)
 	(cd $(@D); $(LN) $(@F) $(notdir $(GPRE_CURRENT)))
 
