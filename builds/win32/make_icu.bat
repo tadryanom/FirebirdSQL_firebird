@@ -9,6 +9,7 @@
 
 @echo Extracting pre-built ICU
 %FB_ROOT_PATH%\extern\icu\icu.exe -y > make_icu_%FB_TARGET_PLATFORM%.log 2>&1
+unzip -o %FB_ROOT_PATH%\extern\icu\icudt.zip -d %FB_ROOT_PATH%\extern\icu
 if errorlevel 1 call :ERROR build failed - see make_icu_%FB_TARGET_PLATFORM%.log for details
 
 @echo Extracting tzdata
