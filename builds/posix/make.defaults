@@ -68,11 +68,14 @@ export FIREBIRD_LOCK
 FIREBIRD_BOOT_BUILD=1
 export FIREBIRD_BOOT_BUILD
 
-LIB=$(FB_BUILD)/lib
-BIN=$(FB_BUILD)/bin
-PLUGINS=$(FB_BUILD)/plugins
+buildSubDirectory=$(FB_BUILD)/$(1)
+
+LIB=$(call buildSubDirectory,lib)
+BIN=$(call buildSubDirectory,bin)
+PLUGINS=$(call buildSubDirectory,plugins)
+TZDATA=$(call buildSubDirectory,tzdata)
+FB_TESTS_DIR=$(call buildSubDirectory,tests)
 RBIN=$(FIREBIRD)/bin
-FB_TESTS_DIR=$(FB_BUILD)/tests
 
 # This picks up the current directory and maps it to the equivalent module
 # in the src and gen area.
@@ -267,7 +270,7 @@ ENGINE_TEST = $(FB_TESTS_DIR)/$(EngineFileName)_test$(EXEC_EXT)
 # confuses the dynamic load process.  So we only have the .$(SHRLIB_EXT) file
 # MOD 28-July-2002
 
-LIBFBINTL_SO = $(FB_BUILD)/intl/$(LIB_PREFIX)fbintl.$(SHRLIB_EXT)
+LIBFBINTL_SO=$(call buildSubDirectory,intl)/$(LIB_PREFIX)fbintl.$(SHRLIB_EXT)
 
 ifeq ($(EDITLINE_FLG),Y)
   ifeq ($(STD_EDITLINE), true)

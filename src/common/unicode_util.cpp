@@ -65,13 +65,14 @@ const char* const ucTemplate = "lib/libicuuc.%s.dylib";
 #elif defined(HPUX)
 const char* const inTemplate = "libicui18n.sl.%s";
 const char* const ucTemplate = "libicuuc.sl.%s";
+#elif defined(ANDROID)
+const char* const inTemplate = "libicui18n.%s.so";
+const char* const ucTemplate = "libicuuc.%s.so";
+// In Android we need to load this library before others.
+const char* const dataTemplate = "libicudata.%s.so";
 #else
 const char* const inTemplate = "libicui18n.so.%s";
 const char* const ucTemplate = "libicuuc.so.%s";
-#endif
-
-#ifdef ANDROID
-const char* const dataTemplate = "libicudata.so.%s";
 #endif
 
 // encapsulate ICU library
@@ -221,12 +222,22 @@ void BaseICU::initialize(ModuleLoader::Module* module)
 	{
 		// call uSetDataDirectory only if .dat file exists at same folder as the loaded module
 
-		PathName modulePathName;
-		if (!module->getRealPath(uSetDataDirectorySymbolName.c_str(), modulePathName))
-			modulePathName = module->fileName;
+		ObjectsArray<PathName> pathsToTry;
+		PathName file;
 
-		PathName path, file, fullName;
-		PathUtils::splitLastComponent(path, file, modulePathName);
+		{	// scope
+			PathName modulePathName;
+			if (!module->getRealPath(uSetDataDirectorySymbolName.c_str(), modulePathName))
+				modulePathName = module->fileName;
+
+			PathName path;
+			PathUtils::splitLastComponent(path, file, modulePathName);
+
+			if (path.hasData())
+				pathsToTry.add(path);
+		}
+
+		pathsToTry.add(Config::getRootDirectory());
 
 		file.printf("icudt%u%c.dat", majorVersion,
 #ifdef WORDS_BIGENDIAN
@@ -236,10 +247,17 @@ void BaseICU::initialize(ModuleLoader::Module* module)
 #endif
 		);
 
-		PathUtils::concatPath(fullName, path, file);
+		for (const auto& path : pathsToTry)
+		{
+			PathName fullName;
+			PathUtils::concatPath(fullName, path, file);
 
-		if (PathUtils::canAccess(fullName, 0))
-			uSetDataDirectory(path.c_str());
+			if (PathUtils::canAccess(fullName, 0))
+			{
+				uSetDataDirectory(path.c_str());
+				break;
+			}
+		}
 	}
 
 	if (uInit)

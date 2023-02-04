@@ -612,7 +612,7 @@ SRP_USER_MANAGER = $(call makePluginName,Srp)
 FBTRACE = $(call makePluginName,fbtrace)
 AUTH_DEBUGGER = $(call makePluginName,Auth_Debug)
 UDF_BACKWARD_COMPATIBILITY_BASENAME = $(LIB_PREFIX)udf_compat.$(SHRLIB_EXT)
-UDF_BACKWARD_COMPATIBILITY = $(PLUGINS)/udr/$(UDF_BACKWARD_COMPATIBILITY_BASENAME)
+UDF_BACKWARD_COMPATIBILITY ?= $(call buildSubDirectory,plugins/udr)/$(UDF_BACKWARD_COMPATIBILITY_BASENAME)
 CHACHA = $(call makePluginName,ChaCha)
 PROFILER = $(call makePluginName,Default_Profiler)
 
@@ -707,11 +707,11 @@ $(FIREBIRD_MSG) $(FIREBIRD)/include/firebird/impl/iberror_c.h:	$(BUILD_FILE)
 	$(BUILD_FILE) -f $(FIREBIRD_MSG) -c $(FIREBIRD)/include/firebird/impl/iberror_c.h
 	$(CHMOD_6) $(FIREBIRD_MSG)
 
-tzdata: $(FB_BUILD)/tzdata
+tzdata: $(TZDATA)/ids.dat
 
-$(FB_BUILD)/tzdata: $(ROOT)/extern/icu/tzdata/$(TZDATA_ZIP)
-	mkdir -p $(FB_BUILD)/tzdata
-	unzip -o $(ROOT)/extern/icu/tzdata/$(TZDATA_ZIP) -d $(FB_BUILD)/tzdata
+$(TZDATA)/ids.dat: $(ROOT)/extern/icu/tzdata/$(TZDATA_ZIP)
+	unzip -o $(ROOT)/extern/icu/tzdata/$(TZDATA_ZIP) -d $(TZDATA)
+	touch $(TZDATA)/ids.dat
 
 $(BUILD_FILE):	$(BUILD_Objects)
 	$(EXE_LINK) $(EXE_LINK_OPTIONS) $(LSB_UNDEF) $^ -o $@
