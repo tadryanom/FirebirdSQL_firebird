@@ -156,8 +156,8 @@ ModuleLoader::Module* BaseICU::formatAndLoad(const char* templateName)
 #ifdef WIN_NT
 			"%d",
 #endif
-			"%d_%d",
 			"%d.%d",
+			"%d_%d",
 			"%d%d"
 		};
 
