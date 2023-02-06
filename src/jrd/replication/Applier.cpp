@@ -258,8 +258,11 @@ Applier* Applier::create(thread_db* tdbb)
 		throw;
 	}
 
+	const auto config = dbb->replConfig();
+	const bool cascade = (config && config->cascadeReplication);
+
 	const auto applier = FB_NEW_POOL(*attachment->att_pool)
-		Applier(*attachment->att_pool, dbb->dbb_filename, request);
+		Applier(*attachment->att_pool, dbb->dbb_filename, request, cascade);
 
 	attachment->att_repl_appliers.add(applier);
 
@@ -273,10 +276,9 @@ void Applier::shutdown(thread_db* tdbb)
 	cleanupTransactions(tdbb);
 
 	CMP_release(tdbb, m_request);
-	m_request = NULL;
-	m_record = NULL;
-
-	m_bitmap->clear();
+	m_request = nullptr;	// already deleted by pool
+	m_record = nullptr;		// already deleted by pool
+	m_bitmap = nullptr;		// already deleted by pool
 
 	attachment->att_repl_appliers.findAndRemove(this);
 
@@ -298,9 +300,6 @@ void Applier::process(thread_db* tdbb, ULONG length, const UCHAR* data)
 
 	tdbb->tdbb_flags |= TDBB_replicator;
 
-	const auto config = dbb->replConfig();
-	m_enableCascade = config != nullptr && config->cascadeReplication;
-
 	BlockReader reader(length, data);
 
 	const auto traNum = reader.getTransactionId();
@@ -311,118 +310,126 @@ void Applier::process(thread_db* tdbb, ULONG length, const UCHAR* data)
 
 	while (!reader.isEof())
 	{
-		const auto op = reader.getTag();
-
-		switch (op)
+		try
 		{
-		case opStartTransaction:
-			startTransaction(tdbb, traNum);
-			break;
+			const auto op = reader.getTag();
 
-		case opPrepareTransaction:
-			prepareTransaction(tdbb, traNum);
-			break;
-
-		case opCommitTransaction:
-			commitTransaction(tdbb, traNum);
-			break;
-
-		case opRollbackTransaction:
-			rollbackTransaction(tdbb, traNum, false);
-			break;
-
-		case opCleanupTransaction:
-			if (traNum)
-				rollbackTransaction(tdbb, traNum, true);
-			else
-				cleanupTransactions(tdbb);
-			break;
-
-		case opStartSavepoint:
-			startSavepoint(tdbb, traNum);
-			break;
-
-		case opReleaseSavepoint:
-			cleanupSavepoint(tdbb, traNum, false);
-			break;
-
-		case opRollbackSavepoint:
-			cleanupSavepoint(tdbb, traNum, true);
-			break;
-
-		case opInsertRecord:
+			switch (op)
 			{
-				const auto relName = reader.getMetaName();
-				const ULONG length = reader.getInt32();
-				const auto record = reader.getBinary(length);
-				insertRecord(tdbb, traNum, relName, length, record);
+			case opStartTransaction:
+				startTransaction(tdbb, traNum);
+				break;
+
+			case opPrepareTransaction:
+				prepareTransaction(tdbb, traNum);
+				break;
+
+			case opCommitTransaction:
+				commitTransaction(tdbb, traNum);
+				break;
+
+			case opRollbackTransaction:
+				rollbackTransaction(tdbb, traNum, false);
+				break;
+
+			case opCleanupTransaction:
+				if (traNum)
+					rollbackTransaction(tdbb, traNum, true);
+				else
+					cleanupTransactions(tdbb);
+				break;
+
+			case opStartSavepoint:
+				startSavepoint(tdbb, traNum);
+				break;
+
+			case opReleaseSavepoint:
+				cleanupSavepoint(tdbb, traNum, false);
+				break;
+
+			case opRollbackSavepoint:
+				cleanupSavepoint(tdbb, traNum, true);
+				break;
+
+			case opInsertRecord:
+				{
+					const auto relName = reader.getMetaName();
+					const ULONG length = reader.getInt32();
+					const auto record = reader.getBinary(length);
+					insertRecord(tdbb, traNum, relName, length, record);
+				}
+				break;
+
+			case opUpdateRecord:
+				{
+					const auto relName = reader.getMetaName();
+					const ULONG orgLength = reader.getInt32();
+					const auto orgRecord = reader.getBinary(orgLength);
+					const ULONG newLength = reader.getInt32();
+					const auto newRecord = reader.getBinary(newLength);
+					updateRecord(tdbb, traNum, relName, orgLength, orgRecord, newLength, newRecord);
+				}
+				break;
+
+			case opDeleteRecord:
+				{
+					const auto relName = reader.getMetaName();
+					const ULONG length = reader.getInt32();
+					const auto record = reader.getBinary(length);
+					deleteRecord(tdbb, traNum, relName, length, record);
+				}
+				break;
+
+			case opStoreBlob:
+				{
+					bid blob_id;
+					blob_id.bid_quad.bid_quad_high = reader.getInt32();
+					blob_id.bid_quad.bid_quad_low = reader.getInt32();
+					do {
+						const ULONG length = (USHORT) reader.getInt16();
+						if (!length)
+						{
+							// Close our newly created blob
+							storeBlob(tdbb, traNum, &blob_id, 0, nullptr);
+							break;
+						}
+						const auto blob = reader.getBinary(length);
+						storeBlob(tdbb, traNum, &blob_id, length, blob);
+					} while (!reader.isEof());
+				}
+				break;
+
+			case opExecuteSql:
+			case opExecuteSqlIntl:
+				{
+					const auto ownerName = reader.getMetaName();
+					const unsigned charset =
+						(op == opExecuteSql) ? CS_UTF8 : reader.getByte();
+					const string sql = reader.getString();
+					executeSql(tdbb, traNum, charset, sql, ownerName);
+				}
+				break;
+
+			case opSetSequence:
+				{
+					const auto genName = reader.getMetaName();
+					const auto value = reader.getInt64();
+					setSequence(tdbb, genName, value);
+				}
+				break;
+
+			case opDefineAtom:
+				reader.defineAtom();
+				break;
+
+			default:
+				fb_assert(false);
 			}
-			break;
-
-		case opUpdateRecord:
-			{
-				const auto relName = reader.getMetaName();
-				const ULONG orgLength = reader.getInt32();
-				const auto orgRecord = reader.getBinary(orgLength);
-				const ULONG newLength = reader.getInt32();
-				const auto newRecord = reader.getBinary(newLength);
-				updateRecord(tdbb, traNum, relName, orgLength, orgRecord, newLength, newRecord);
-			}
-			break;
-
-		case opDeleteRecord:
-			{
-				const auto relName = reader.getMetaName();
-				const ULONG length = reader.getInt32();
-				const auto record = reader.getBinary(length);
-				deleteRecord(tdbb, traNum, relName, length, record);
-			}
-			break;
-
-		case opStoreBlob:
-			{
-				bid blob_id;
-				blob_id.bid_quad.bid_quad_high = reader.getInt32();
-				blob_id.bid_quad.bid_quad_low = reader.getInt32();
-				do {
-					const ULONG length = (USHORT) reader.getInt16();
-					if (!length)
-					{
-						// Close our newly created blob
-						storeBlob(tdbb, traNum, &blob_id, 0, nullptr);
-						break;
-					}
-					const auto blob = reader.getBinary(length);
-					storeBlob(tdbb, traNum, &blob_id, length, blob);
-				} while (!reader.isEof());
-			}
-			break;
-
-		case opExecuteSql:
-		case opExecuteSqlIntl:
-			{
-				const auto ownerName = reader.getMetaName();
-				const unsigned charset =
-					(op == opExecuteSql) ? CS_UTF8 : reader.getByte();
-				const string sql = reader.getString();
-				executeSql(tdbb, traNum, charset, sql, ownerName);
-			}
-			break;
-
-		case opSetSequence:
-			{
-				const auto genName = reader.getMetaName();
-				const auto value = reader.getInt64();
-				setSequence(tdbb, genName, value);
-			}
-			break;
-
-		case opDefineAtom:
-			reader.defineAtom();
-			break;
-
-		default:
-			fb_assert(false);
+		}
+		catch (const Exception& ex)
+		{
+			ex.stuffException(tdbb->tdbb_status_vector);
+			CCH_unwind(tdbb, true);
 		}
 
 		// Check cancellation flags and reset monitoring state if necessary
@@ -536,6 +543,7 @@ void Applier::insertRecord(thread_db* tdbb, TraNumber traNum,
 		raiseError("Transaction %" SQUADFORMAT" is not found", traNum);
 
 	LocalThreadContext context(tdbb, transaction, m_request);
+	Jrd::ContextPoolHolder context2(tdbb, m_request->req_pool);
 
 	TRA_attach_request(transaction, m_request);
 
@@ -553,7 +561,7 @@ void Applier::insertRecord(thread_db* tdbb, TraNumber traNum,
 
 	rpb.rpb_record = m_record;
 	const auto record = m_record =
-		VIO_record(tdbb, &rpb, format, m_request->req_pool);
+		VIO_record(tdbb, &rpb, format, tdbb->getDefaultPool());
 
 	rpb.rpb_format_number = format->fmt_version;
 	rpb.rpb_address = record->getData();
@@ -627,7 +635,7 @@ void Applier::insertRecord(thread_db* tdbb, TraNumber traNum,
 		do {
 			tempRpb.rpb_number.setValue(m_bitmap->current());
 
-			if (VIO_get(tdbb, &tempRpb, transaction, m_request->req_pool) &&
+			if (VIO_get(tdbb, &tempRpb, transaction, tdbb->getDefaultPool()) &&
 				(!indexed || compareKey(tdbb, relation, idx, record, tempRpb.rpb_record)))
 			{
 				if (found)
@@ -671,6 +679,7 @@ void Applier::updateRecord(thread_db* tdbb, TraNumber traNum,
 		raiseError("Transaction %" SQUADFORMAT" is not found", traNum);
 
 	LocalThreadContext context(tdbb, transaction, m_request);
+	Jrd::ContextPoolHolder context2(tdbb, m_request->req_pool);
 
 	TRA_attach_request(transaction, m_request);
 
@@ -688,7 +697,7 @@ void Applier::updateRecord(thread_db* tdbb, TraNumber traNum,
 
 	orgRpb.rpb_record = m_record;
 	const auto orgRecord = m_record =
-		VIO_record(tdbb, &orgRpb, orgFormat, m_request->req_pool);
+		VIO_record(tdbb, &orgRpb, orgFormat, tdbb->getDefaultPool());
 
 	orgRpb.rpb_format_number = orgFormat->fmt_version;
 	orgRpb.rpb_address = orgRecord->getData();
@@ -724,7 +733,7 @@ void Applier::updateRecord(thread_db* tdbb, TraNumber traNum,
 		do {
 			tempRpb.rpb_number.setValue(m_bitmap->current());
 
-			if (VIO_get(tdbb, &tempRpb, transaction, m_request->req_pool) &&
+			if (VIO_get(tdbb, &tempRpb, transaction, tdbb->getDefaultPool()) &&
 				(!indexed || compareKey(tdbb, relation, idx, orgRecord, tempRpb.rpb_record)))
 			{
 				if (found)
@@ -744,7 +753,7 @@ void Applier::updateRecord(thread_db* tdbb, TraNumber traNum,
 	newRpb.rpb_relation = relation;
 
 	newRpb.rpb_record = NULL;
-	AutoPtr<Record> newRecord(VIO_record(tdbb, &newRpb, newFormat, m_request->req_pool));
+	AutoPtr<Record> newRecord(VIO_record(tdbb, &newRpb, newFormat, tdbb->getDefaultPool()));
 
 	newRpb.rpb_format_number = newFormat->fmt_version;
 	newRpb.rpb_address = newRecord->getData();
@@ -811,6 +820,7 @@ void Applier::deleteRecord(thread_db* tdbb, TraNumber traNum,
 		raiseError("Transaction %" SQUADFORMAT" is not found", traNum);
 
 	LocalThreadContext context(tdbb, transaction, m_request);
+	Jrd::ContextPoolHolder context2(tdbb, m_request->req_pool);
 
 	TRA_attach_request(transaction, m_request);
 
@@ -828,7 +838,7 @@ void Applier::deleteRecord(thread_db* tdbb, TraNumber traNum,
 
 	rpb.rpb_record = m_record;
 	const auto record = m_record =
-		VIO_record(tdbb, &rpb, format, m_request->req_pool);
+		VIO_record(tdbb, &rpb, format, tdbb->getDefaultPool());
 
 	rpb.rpb_format_number = format->fmt_version;
 	rpb.rpb_address = record->getData();
@@ -849,7 +859,7 @@ void Applier::deleteRecord(thread_db* tdbb, TraNumber traNum,
 		do {
 			tempRpb.rpb_number.setValue(m_bitmap->current());
 
-			if (VIO_get(tdbb, &tempRpb, transaction, m_request->req_pool) &&
+			if (VIO_get(tdbb, &tempRpb, transaction, tdbb->getDefaultPool()) &&
 				(!indexed || compareKey(tdbb, relation, idx, record, tempRpb.rpb_record)))
 			{
 				if (found)
@@ -959,7 +969,7 @@ void Applier::executeSql(thread_db* tdbb,
 
 	AutoSetRestore<SSHORT> autoCharset(&attachment->att_charset, charset);
 
-  UserId* const owner = attachment->getUserId(ownerName);
+	UserId* const owner = attachment->getUserId(ownerName);
 	AutoSetRestore<UserId*> autoOwner(&attachment->att_ss_user, owner);
 	AutoSetRestoreFlag<ULONG> noCascade(&tdbb->tdbb_flags, TDBB_repl_in_progress, !m_enableCascade);
 
@@ -1064,7 +1074,7 @@ bool Applier::lookupRecord(thread_db* tdbb,
 	// Special case: RDB$DATABASE has no keys but it's guaranteed to have only one record
 	if (relation->rel_id == rel_database)
 	{
-		bitmap->set(0);
+		RBM_SET(tdbb->getDefaultPool(), &bitmap, 0);
 		return false;
 	}
 
@@ -1110,7 +1120,7 @@ bool Applier::lookupRecord(thread_db* tdbb,
 	rpb.rpb_relation = relation;
 	rpb.rpb_number.setValue(BOF_NUMBER);
 
-	while (VIO_next_record(tdbb, &rpb, transaction, m_request->req_pool, DPM_next_all))
+	while (VIO_next_record(tdbb, &rpb, transaction, tdbb->getDefaultPool(), DPM_next_all))
 	{
 		const auto seq_record = rpb.rpb_record;
 		fb_assert(seq_record);
