@@ -627,7 +627,7 @@ void Applier::insertRecord(thread_db* tdbb, TraNumber traNum,
 
 	AutoPtr<Record> cleanup;
 
-	if (m_bitmap->getFirst())
+	if (m_bitmap && m_bitmap->getFirst())
 	{
 		record_param tempRpb = rpb;
 		tempRpb.rpb_record = NULL;
@@ -725,7 +725,7 @@ void Applier::updateRecord(thread_db* tdbb, TraNumber traNum,
 	bool found = false;
 	AutoPtr<Record> cleanup;
 
-	if (m_bitmap->getFirst())
+	if (m_bitmap && m_bitmap->getFirst())
 	{
 		record_param tempRpb = orgRpb;
 		tempRpb.rpb_record = NULL;
@@ -851,7 +851,7 @@ void Applier::deleteRecord(thread_db* tdbb, TraNumber traNum,
 	bool found = false;
 	AutoPtr<Record> cleanup;
 
-	if (m_bitmap->getFirst())
+	if (m_bitmap && m_bitmap->getFirst())
 	{
 		record_param tempRpb = rpb;
 		tempRpb.rpb_record = NULL;
