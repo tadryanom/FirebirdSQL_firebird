@@ -623,7 +623,7 @@ void Applier::insertRecord(thread_db* tdbb, TraNumber traNum,
 
 #ifdef RESOLVE_CONFLICTS
 	index_desc idx;
-	const auto indexed = lookupRecord(tdbb, relation, record, m_bitmap, idx);
+	const auto indexed = lookupRecord(tdbb, relation, record, idx);
 
 	AutoPtr<Record> cleanup;
 
@@ -720,7 +720,7 @@ void Applier::updateRecord(thread_db* tdbb, TraNumber traNum,
 	}
 
 	index_desc idx;
-	const auto indexed = lookupRecord(tdbb, relation, orgRecord, m_bitmap, idx);
+	const auto indexed = lookupRecord(tdbb, relation, orgRecord, idx);
 
 	bool found = false;
 	AutoPtr<Record> cleanup;
@@ -846,7 +846,7 @@ void Applier::deleteRecord(thread_db* tdbb, TraNumber traNum,
 	record->copyDataFrom(data);
 
 	index_desc idx;
-	const bool indexed = lookupRecord(tdbb, relation, record, m_bitmap, idx);
+	const bool indexed = lookupRecord(tdbb, relation, record, idx);
 
 	bool found = false;
 	AutoPtr<Record> cleanup;
@@ -1066,15 +1066,14 @@ bool Applier::compareKey(thread_db* tdbb, jrd_rel* relation, const index_desc& i
 
 bool Applier::lookupRecord(thread_db* tdbb,
 						   jrd_rel* relation, Record* record,
-						   RecordBitmap* bitmap,
 						   index_desc& idx)
 {
-	RecordBitmap::reset(bitmap);
+	RecordBitmap::reset(m_bitmap);
 
 	// Special case: RDB$DATABASE has no keys but it's guaranteed to have only one record
 	if (relation->rel_id == rel_database)
 	{
-		RBM_SET(tdbb->getDefaultPool(), &bitmap, 0);
+		RBM_SET(tdbb->getDefaultPool(), &m_bitmap, 0);
 		return false;
 	}
 
@@ -1092,7 +1091,7 @@ bool Applier::lookupRecord(thread_db* tdbb,
 		IndexRetrieval retrieval(relation, &idx, idx.idx_count, &key);
 		retrieval.irb_generic = irb_equality | (idx.idx_flags & idx_descending ? irb_descending : 0);
 
-		BTR_evaluate(tdbb, &retrieval, &bitmap, NULL);
+		BTR_evaluate(tdbb, &retrieval, &m_bitmap, NULL);
 		return true;
 	}
 
@@ -1147,7 +1146,7 @@ bool Applier::lookupRecord(thread_db* tdbb,
 		}
 
 		if (matched)
-			bitmap->set(rpb.rpb_number.getValue());
+			RBM_SET(tdbb->getDefaultPool(), &m_bitmap, rpb.rpb_number.getValue());
 	}
 
 	delete rpb.rpb_record;
