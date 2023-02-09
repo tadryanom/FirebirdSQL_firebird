@@ -670,3 +670,113 @@ jobs:
           token: ${{ secrets.SNAPSHOT_RELEASE_TOKEN }}
           files: |
             gen/Firebird-*-android-${{ matrix.arch }}*.tar.gz
+
+  build-android-aar:
+    needs: build-android-final
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 10
+
+      - name: Download final build (x86)
+        uses: actions/download-artifact@v3
+        with:
+          name: firebird-android-x86
+          path: android/temp
+
+      - name: Download final build (x64)
+        uses: actions/download-artifact@v3
+        with:
+          name: firebird-android-x64
+          path: android/temp
+
+      - name: Download final build (arm32)
+        uses: actions/download-artifact@v3
+        with:
+          name: firebird-android-arm32
+          path: android/temp
+
+      - name: Download final build (arm64)
+        uses: actions/download-artifact@v3
+        with:
+          name: firebird-android-arm64
+          path: android/temp
+
+      - name: Extract final builds
+        working-directory: android
+        run: |
+          mkdir -p embedded/src/main/jniLibs/{x86,x86_64,armeabi-v7a,arm64-v8a}
+          tar xzvf temp/Firebird-*-android-x86.tar.gz -C embedded/src/main/jniLibs/x86 --strip-components=1
+          tar xzvf temp/Firebird-*-android-x64.tar.gz -C embedded/src/main/jniLibs/x86_64 --strip-components=1
+          tar xzvf temp/Firebird-*-android-arm32.tar.gz -C embedded/src/main/jniLibs/armeabi-v7a --strip-components=1
+          tar xzvf temp/Firebird-*-android-arm64.tar.gz -C embedded/src/main/jniLibs/arm64-v8a --strip-components=1
+
+          mkdir -p embedded/src/main/assets/firebird
+          mv embedded/src/main/jniLibs/x86/{*.conf,*.msg,*.dat,*.res} embedded/src/main/assets/firebird/
+          find embedded/src/main/jniLibs -type f ! -iname "*.so" -delete
+
+      - name: Assemble AAR
+        working-directory: android
+        run: |
+          ./gradlew assembleRelease
+          FB_VERSION=`cd ../src/misc/ && . writeBuildNum.sh && echo $PRODUCT_VER_STRING`
+          mv embedded/build/outputs/aar/firebird-embedded-release.aar \
+             embedded/build/outputs/aar/Firebird-$FB_VERSION-android-embedded.aar
+
+      - name: Upload installer
+        uses: actions/upload-artifact@main
+        with:
+          name: firebird-android-aar
+          path: android/embedded/build/outputs/aar/Firebird-*-android-embedded.aar
+
+      - name: Snapshot - prepare
+        id: snapshot_prepare
+        if: |
+          github.repository == 'FirebirdSQL/firebird' &&
+          github.event.head_commit.message == 'increment build number' &&
+          github.ref_name == 'master'
+        run: |
+          echo "snapshot_name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+
+      - name: Snapshot - delete old assets
+        uses: mknejp/delete-release-assets@v1
+        if: steps.snapshot_prepare.outputs.snapshot_name
+        with:
+          repository: FirebirdSQL/snapshots
+          token: ${{ secrets.SNAPSHOT_RELEASE_TOKEN }}
+          tag: snapshot-${{ steps.snapshot_prepare.outputs.snapshot_name }}
+          fail-if-no-release: false
+          fail-if-no-assets: false
+          assets: |
+            Firebird-*-android-embedded.aar
+
+      - name: Snapshot - release
+        id: snapshot_release_try1
+        uses: softprops/action-gh-release@v1
+        if: steps.snapshot_prepare.outputs.snapshot_name
+        continue-on-error: true
+        with:
+          repository: FirebirdSQL/snapshots
+          name: Latest snapshots for ${{ steps.snapshot_prepare.outputs.snapshot_name }}
+          tag_name: snapshot-${{ steps.snapshot_prepare.outputs.snapshot_name }}
+          prerelease: true
+          token: ${{ secrets.SNAPSHOT_RELEASE_TOKEN }}
+          files: |
+            android/embedded/build/outputs/aar/Firebird-*-android-embedded.aar
+
+      - name: Snapshot - release (retry)
+        uses: softprops/action-gh-release@v1
+        if: |
+          steps.snapshot_prepare.outputs.snapshot_name &&
+          steps.snapshot_release_try1.outcome == 'failure'
+        with:
+          repository: FirebirdSQL/snapshots
+          name: Latest snapshots for ${{ steps.snapshot_prepare.outputs.snapshot_name }}
+          tag_name: snapshot-${{ steps.snapshot_prepare.outputs.snapshot_name }}
+          prerelease: true
+          token: ${{ secrets.SNAPSHOT_RELEASE_TOKEN }}
+          files: |
+            android/embedded/build/outputs/aar/Firebird-*-android-embedded.aar
