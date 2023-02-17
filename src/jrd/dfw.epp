@@ -2717,7 +2717,6 @@ static bool create_expression_index(thread_db* tdbb, SSHORT phase, DeferredWork*
 		{
 			jrd_rel* relation = nullptr;
 			CompilerScratch* csb = nullptr;
-			MemoryPool* new_pool = nullptr;
 
 			const auto dbb = tdbb->getDatabase();
 			const auto attachment = tdbb->getAttachment();
@@ -2776,65 +2775,70 @@ static bool create_expression_index(thread_db* tdbb, SSHORT phase, DeferredWork*
 					MET_scan_relation(tdbb, relation);
 
 					// Allocate a new pool to contain the expression tree
-					// for index expression / condition
-					new_pool = attachment->createPool();
+					// for index expression
+					const auto new_pool = attachment->createPool();
 
-					Jrd::ContextPoolHolder context(tdbb, new_pool);
+					try
+					{
+						Jrd::ContextPoolHolder context(tdbb, new_pool);
 
-					MET_get_dependencies(tdbb, relation, nullptr, 0, nullptr, &IDX.RDB$EXPRESSION_BLR,
-						nullptr, &csb, work->dfw_name, obj_index_expression, 0,
-						transaction);
+						MET_get_dependencies(tdbb, relation, nullptr, 0, nullptr, &IDX.RDB$EXPRESSION_BLR,
+							nullptr, &csb, work->dfw_name, obj_index_expression, 0,
+							transaction);
 
-					idx.idx_expression_statement = Statement::makeValueExpression(tdbb,
-						idx.idx_expression, idx.idx_expression_desc, csb, false);
+						idx.idx_expression_statement = Statement::makeValueExpression(tdbb,
+							idx.idx_expression, idx.idx_expression_desc, csb, false);
 
-					// fake a description of the index
+						// fake a description of the index
 
-					idx.idx_count = 1;
-					idx.idx_flags |= idx_expression;
-					idx.idx_rpt[0].idx_itype =
-						DFW_assign_index_type(tdbb, work->dfw_name,
-						idx.idx_expression_desc.dsc_dtype,
-						idx.idx_expression_desc.dsc_sub_type);
-					idx.idx_rpt[0].idx_selectivity = 0;
+						idx.idx_count = 1;
+						idx.idx_flags |= idx_expression;
+						idx.idx_rpt[0].idx_itype =
+							DFW_assign_index_type(tdbb, work->dfw_name,
+							idx.idx_expression_desc.dsc_dtype,
+							idx.idx_expression_desc.dsc_sub_type);
+						idx.idx_rpt[0].idx_selectivity = 0;
+					}
+					catch (const Exception&)
+					{
+						attachment->deletePool(new_pool);
+						throw;
+					}
+
+					if (!IDX.RDB$CONDITION_BLR.NULL)
+					{
+						// Allocate a new pool to contain the expression tree
+						// for index condition
+						const auto new_pool = attachment->createPool();
+
+						try
+						{
+							Jrd::ContextPoolHolder context(tdbb, new_pool);
+
+							MET_get_dependencies(tdbb, relation, nullptr, 0, nullptr, &IDX.RDB$CONDITION_BLR,
+								nullptr, &csb, work->dfw_name, obj_index_condition, 0,
+								transaction);
+
+							idx.idx_condition_statement = Statement::makeBoolExpression(tdbb,
+								idx.idx_condition, csb, false);
+
+							idx.idx_flags |= idx_condition;
+						}
+						catch (const Exception&)
+						{
+							attachment->deletePool(new_pool);
+							throw;
+						}
+					}
 				}
 			}
 			END_FOR
 
 			if (!relation)
 			{
-				if (new_pool)
-					attachment->deletePool(new_pool);
-
 				// Msg308: can't create index %s
 				ERR_post(Arg::Gds(isc_no_meta_update) <<
 					Arg::Gds(isc_idx_create_err) << Arg::Str(work->dfw_name));
-			}
-
-			idx.idx_condition = nullptr;
-			idx.idx_condition_statement = nullptr;
-
-			if (dbb->getEncodedOdsVersion() >= ODS_13_1)
-			{
-				AutoCacheRequest request(tdbb, irq_c_cond_index, IRQ_REQUESTS);
-
-				FOR(REQUEST_HANDLE request)
-					IDX IN RDB$INDICES WITH
-					IDX.RDB$CONDITION_BLR NOT MISSING AND
-					IDX.RDB$INDEX_NAME EQ work->dfw_name.c_str()
-				{
-					Jrd::ContextPoolHolder context(tdbb, new_pool);
-
-					MET_get_dependencies(tdbb, relation, nullptr, 0, nullptr, &IDX.RDB$CONDITION_BLR,
-						nullptr, &csb, work->dfw_name, obj_index_condition, 0,
-						transaction);
-
-					idx.idx_condition_statement = Statement::makeBoolExpression(tdbb,
-						idx.idx_condition, csb, false);
-
-					idx.idx_flags |= idx_condition;
-				}
-				END_FOR
 			}
 
 			delete csb;
@@ -3481,6 +3485,38 @@ static bool create_index(thread_db* tdbb, SSHORT phase, DeferredWork* work, jrd_
 			}
 			END_FOR
 
+			idx.idx_condition = nullptr;
+			idx.idx_condition_statement = nullptr;
+
+			if (!IDX.RDB$CONDITION_BLR.NULL)
+			{
+				// Allocate a new pool to contain the expression tree
+				// for index condition
+				const auto new_pool = attachment->createPool();
+				CompilerScratch* csb = nullptr;
+
+				try
+				{
+					Jrd::ContextPoolHolder context(tdbb, new_pool);
+
+					MET_get_dependencies(tdbb, relation, nullptr, 0, nullptr, &IDX.RDB$CONDITION_BLR,
+						nullptr, &csb, work->dfw_name, obj_index_condition, 0,
+						transaction);
+
+					idx.idx_condition_statement = Statement::makeBoolExpression(tdbb,
+						idx.idx_condition, csb, false);
+
+					idx.idx_flags |= idx_condition;
+				}
+				catch (const Exception&)
+				{
+					attachment->deletePool(new_pool);
+					throw;
+				}
+
+				delete csb;
+			}
+
 			// Here we need dirty reads from database (first of all from
 			// RDB$RELATION_FIELDS and RDB$FIELDS - tables not directly related
 			// with index to be created and it's dfw_name). Missing it breaks gbak,
@@ -3576,39 +3612,6 @@ static bool create_index(thread_db* tdbb, SSHORT phase, DeferredWork* work, jrd_
 			ERR_post(Arg::Gds(isc_no_meta_update) <<
 					 Arg::Gds(isc_idx_create_err) << Arg::Str(work->dfw_name));
 			// Msg308: can't create index %s
-		}
-
-		idx.idx_condition = nullptr;
-		idx.idx_condition_statement = nullptr;
-
-		if (dbb->getEncodedOdsVersion() >= ODS_13_1)
-		{
-			// Allocate a new pool to contain the expression tree
-			// for index condition
-			const auto new_pool = attachment->createPool();
-			CompilerScratch* csb = nullptr;
-
-			AutoCacheRequest request(tdbb, irq_c_cond_index, IRQ_REQUESTS);
-
-			FOR(REQUEST_HANDLE request)
-				IDX IN RDB$INDICES WITH
-				IDX.RDB$CONDITION_BLR NOT MISSING AND
-				IDX.RDB$INDEX_NAME EQ work->dfw_name.c_str()
-			{
-				Jrd::ContextPoolHolder context(tdbb, new_pool);
-
-				MET_get_dependencies(tdbb, relation, nullptr, 0, nullptr, &IDX.RDB$CONDITION_BLR,
-					nullptr, &csb, work->dfw_name, obj_index_condition, 0,
-					transaction);
-
-				idx.idx_condition_statement = Statement::makeBoolExpression(tdbb,
-					idx.idx_condition, csb, false);
-
-				idx.idx_flags |= idx_condition;
-			}
-			END_FOR
-
-			delete csb;
 		}
 
 		// Actually create the index
