@@ -1367,31 +1367,35 @@ for fb_tgt in \$FB_TARGETS; do
 	echo "Creating \$fb_tgt directories"
 
 dnl # output
-	mkdir -p gen/\$fb_tgt/firebird/bin
-	mkdir -p gen/\$fb_tgt/firebird/include/firebird/impl
-	mkdir -p gen/\$fb_tgt/firebird/lib
-	mkdir -p gen/\$fb_tgt/firebird/tests
-if test "$CLIENT_ONLY_FLG" = "N" || test "$WITH_TOMCRYPT" = "Y"; then
-	mkdir -p gen/\$fb_tgt/firebird/plugins
-fi
-if test "$CLIENT_ONLY_FLG" = "N"; then
-	mkdir -p gen/\$fb_tgt/firebird/plugins/udr
-	mkdir -p gen/\$fb_tgt/firebird/examples/api
-	mkdir -p gen/\$fb_tgt/firebird/examples/dbcrypt
-	mkdir -p gen/\$fb_tgt/firebird/examples/empbuild
-	mkdir -p gen/\$fb_tgt/firebird/examples/extauth
-	mkdir -p gen/\$fb_tgt/firebird/examples/include
-	mkdir -p gen/\$fb_tgt/firebird/examples/interfaces
-	mkdir -p gen/\$fb_tgt/firebird/examples/object_pascal
-	mkdir -p gen/\$fb_tgt/firebird/examples/object_pascal/common
-	mkdir -p gen/\$fb_tgt/firebird/examples/package
-	mkdir -p gen/\$fb_tgt/firebird/examples/stat
-	mkdir -p gen/\$fb_tgt/firebird/examples/udf
-	mkdir -p gen/\$fb_tgt/firebird/examples/udr
-	mkdir -p gen/\$fb_tgt/firebird/examples/prebuilt/bin
-	mkdir -p gen/\$fb_tgt/firebird/examples/prebuilt/plugins
-	mkdir -p gen/\$fb_tgt/firebird/misc
-fi
+
+	if test "x\$fb_tgt" = "xNative" || [[[ x$CROSS != xandroid* ]]]; then
+		mkdir -p gen/\$fb_tgt/firebird/bin
+		mkdir -p gen/\$fb_tgt/firebird/lib
+		mkdir -p gen/\$fb_tgt/firebird/tests
+		mkdir -p gen/\$fb_tgt/firebird/tzdata
+		mkdir -p gen/\$fb_tgt/firebird/include/firebird/impl
+		if test "$CLIENT_ONLY_FLG" = "N" || test "$WITH_TOMCRYPT" = "Y"; then
+			mkdir -p gen/\$fb_tgt/firebird/plugins
+		fi
+		if test "$CLIENT_ONLY_FLG" = "N"; then
+			mkdir -p gen/\$fb_tgt/firebird/plugins/udr
+			mkdir -p gen/\$fb_tgt/firebird/examples/api
+			mkdir -p gen/\$fb_tgt/firebird/examples/dbcrypt
+			mkdir -p gen/\$fb_tgt/firebird/examples/empbuild
+			mkdir -p gen/\$fb_tgt/firebird/examples/extauth
+			mkdir -p gen/\$fb_tgt/firebird/examples/include
+			mkdir -p gen/\$fb_tgt/firebird/examples/interfaces
+			mkdir -p gen/\$fb_tgt/firebird/examples/object_pascal
+			mkdir -p gen/\$fb_tgt/firebird/examples/object_pascal/common
+			mkdir -p gen/\$fb_tgt/firebird/examples/package
+			mkdir -p gen/\$fb_tgt/firebird/examples/stat
+			mkdir -p gen/\$fb_tgt/firebird/examples/udf
+			mkdir -p gen/\$fb_tgt/firebird/examples/udr
+			mkdir -p gen/\$fb_tgt/firebird/examples/prebuilt/bin
+			mkdir -p gen/\$fb_tgt/firebird/examples/prebuilt/plugins
+			mkdir -p gen/\$fb_tgt/firebird/misc
+		fi
+	fi
 
 dnl ### TEMP ### directories for generated .cpp, .o and .d by module name
 	for src_dir in `cd src; ls -R -1 * | grep : | tr -d : | tr "\n" " "; cd ..`; do
@@ -1424,9 +1428,17 @@ if test "$CLIENT_ONLY_FLG" = "N"; then
 AC_CONFIG_FILES([
 gen/$fb_tgt/firebird/databases.conf:builds/install/misc/databases.conf
 gen/$fb_tgt/firebird/fbtrace.conf:src/utilities/ntrace/fbtrace.conf
-gen/$fb_tgt/firebird/intl/fbintl.conf:builds/install/misc/fbintl.conf
 gen/$fb_tgt/firebird/replication.conf:builds/install/misc/replication.conf
 ])
+if test "x$fb_tgt" != "xNative" && [[[ x$CROSS = xandroid* ]]]; then
+AC_CONFIG_FILES([
+gen/$fb_tgt/firebird/fbintl.conf:builds/install/misc/fbintl.conf
+])
+else
+AC_CONFIG_FILES([
+gen/$fb_tgt/firebird/intl/fbintl.conf:builds/install/misc/fbintl.conf
+])
+fi
 fi
 done
 
@@ -1434,6 +1446,7 @@ if test "x$CROSS" != "x"; then
 AC_CONFIG_FILES([gen/make.crossPlatform:builds/posix/make.$CROSS])
 fi
 
+if [[[ x$CROSS != xandroid* ]]]; then
 AC_CONFIG_FILES([
 gen/Release/firebird/bin/fb_config:builds/install/posix-common/fb_config.in
 gen/Release/firebird/bin/posixLibrary.sh:builds/install/posix-common/posixLibrary.sh.in
@@ -1441,6 +1454,10 @@ gen/Release/firebird/bin/install.sh:builds/install/posix-common/install.sh.in
 gen/Release/firebird/bin/FirebirdUninstall.sh:builds/install/posix-common/FirebirdUninstall.sh.in
 gen/Release/firebird/bin/changeServerMode.sh:builds/install/posix-common/changeServerMode.sh.in
 gen/Release/firebird/bin/registerDatabase.sh:builds/install/posix-common/registerDatabase.sh.in
+])
+fi
+
+AC_CONFIG_FILES([
 gen/vers.sh:builds/posix/vers.sh.in
 ])
 
@@ -1461,10 +1478,17 @@ case "$PLATFORM" in
         gen/install/misc/firebird.init.d.gentoo:builds/install/arch-specific/linux/firebird.init.d.gentoo.in
         gen/install/misc/firebird.init.d.slackware:builds/install/arch-specific/linux/firebird.init.d.slackware.in
         gen/install/misc/rc.config.firebird:builds/install/arch-specific/linux/rc.config.firebird.in
-        gen/Release/firebird/bin/linuxLibrary.sh:builds/install/arch-specific/linux/linuxLibrary.sh.in
         gen/install/misc/firebird.service:builds/install/arch-specific/linux/firebird.service.in
     ],
 	[chmod a+x gen/install/*sh 2>/dev/null])
+
+    if [[[ x$CROSS != xandroid* ]]]; then
+        AC_CONFIG_FILES([
+            gen/Release/firebird/bin/linuxLibrary.sh:builds/install/arch-specific/linux/linuxLibrary.sh.in
+        ],
+        [chmod a+x gen/install/*sh 2>/dev/null])
+    fi
+
     ;;
 
   HPUX)
