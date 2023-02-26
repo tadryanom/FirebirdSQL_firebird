@@ -722,7 +722,7 @@ jobs:
         working-directory: android
         run: |
           ./gradlew assembleRelease
-          FB_VERSION=`cd ../src/misc/ && . writeBuildNum.sh && echo $PRODUCT_VER_STRING`
+          FB_VERSION=`cd ../src/misc/ && . writeBuildNum.sh && echo $PRODUCT_VER_STRING-$FIREBIRD_PACKAGE_VERSION`
           mv embedded/build/outputs/aar/firebird-embedded-release.aar \
              embedded/build/outputs/aar/Firebird-$FB_VERSION-android-embedded.aar
 
