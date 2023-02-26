@@ -902,6 +902,9 @@ void EXE_start(thread_db* tdbb, Request* request, jrd_tra* transaction)
 
 	request->req_records_affected.clear();
 
+	for (auto& rpb : request->req_rpb)
+		rpb.rpb_runtime_flags = 0;
+
 	request->req_profiler_time = 0;
 
 	// Store request start time for timestamp work
