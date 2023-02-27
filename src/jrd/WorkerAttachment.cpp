@@ -276,7 +276,10 @@ StableAttachmentPart* WorkerAttachment::getAttachment(FbStatusVector* status, Da
 
 		sAtt = item->m_idleAtts.pop();
 		if (sAtt->getHandle())
+		{
+			status->init();
 			break;
+		}
 
 		// idle worker attachment was unexpectedly deleted, clean up and try next one
 		MutexUnlockGuard unlock(item->m_mutex, FB_FUNCTION);
