@@ -173,6 +173,7 @@ public:
 		m_batch = nullptr;
 		m_request = nullptr;
 		m_recs = 0;
+		m_batchRecs = 0;
 		m_resync = true;
 	}
 
@@ -186,6 +187,7 @@ public:
 
 	void compile(BurpGlobals* tdgbl, Firebird::IAttachment* att);
 	void send(BurpGlobals* tdgbl, Firebird::ITransaction* tran, bool lastRec);
+	void execBatch(BurpGlobals * tdgbl);
 	void release();
 
 	ULONG getDataLength() const
@@ -225,7 +227,8 @@ private:
 	Firebird::Array<UCHAR> m_batchMsg;
 	Firebird::IBatch* m_batch;
 	Firebird::IRequest* m_request;
-	int m_recs;
+	int m_recs;							// total records sent
+	int m_batchRecs;					// records in current batch
 	bool m_resync;
 };
 
