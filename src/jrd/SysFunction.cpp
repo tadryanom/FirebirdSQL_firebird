@@ -1290,8 +1290,10 @@ void makeBlobAppend(DataTypeUtilBase* dataTypeUtil, const SysFunction* function,
 		const dsc** const end = args + argsCount;
 
 		for (; ppArg < end; ppArg++)
+		{
 			if (makeBlobAppendBlob(result, *ppArg))
 				return;
+		}
 	}
 
 	fb_assert(false);
