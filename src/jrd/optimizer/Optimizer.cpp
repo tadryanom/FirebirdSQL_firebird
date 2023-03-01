@@ -684,29 +684,7 @@ RecordSource* Optimizer::compile(BoolExprNodeStack* parentStack)
 		{
 			const auto node = iter.object();
 
-			StreamList streams;
-
-			if (!isInnerJoin())
-			{
-				fb_assert(rse->rse_relations.getCount() == 2);
-
-				const auto rse1 = rse->rse_relations[0];
-				const auto rse2 = rse->rse_relations[1];
-				fb_assert(rse1 && rse2);
-
-				if (isFullJoin())
-				{
-					rse1->computeRseStreams(streams);
-					rse2->computeRseStreams(streams);
-				}
-				else // left outer join
-				{
-					fb_assert(rse->rse_jointype == blr_left);
-					rse2->computeRseStreams(streams);
-				}
-			}
-
-			if (streams.hasData() && node->possiblyUnknown(streams))
+			if (!isInnerJoin() && node->possiblyUnknown())
 			{
 				// parent missing conjunctions shouldn't be
 				// distributed to FULL OUTER JOIN streams at all

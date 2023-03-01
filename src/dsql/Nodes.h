@@ -658,7 +658,10 @@ public:
 	}
 
 	// Check if expression could return NULL or expression can turn NULL into a true/false.
-	virtual bool possiblyUnknown(const StreamList& streams) const;
+	virtual bool possiblyUnknown() const;
+
+	// Check if expression is known to ignore NULLs
+	virtual bool ignoreNulls(const StreamList& streams) const;
 
 	// Verify if this node is allowed in an unmapped boolean.
 	virtual bool unmappable(const MapNode* mapNode, StreamType shellStream) const;
@@ -1042,9 +1045,14 @@ public:
 
 	virtual AggNode* pass2(thread_db* tdbb, CompilerScratch* csb);
 
-	virtual bool possiblyUnknown(const StreamList& /*streams*/) const
+	virtual bool possiblyUnknown() const
 	{
 		return true;
+	}
+
+	virtual bool ignoreNulls(const StreamList& /*streams*/) const
+	{
+		return false;
 	}
 
 	virtual void collectStreams(SortedStreamList& /*streamList*/) const
@@ -1177,9 +1185,14 @@ public:
 		fb_assert(false);
 	}
 
-	virtual bool possiblyUnknown(const StreamList& /*streams*/) const
+	virtual bool possiblyUnknown() const
 	{
 		return true;
+	}
+
+	virtual bool ignoreNulls(const StreamList& /*streams*/) const
+	{
+		return false;
 	}
 
 	virtual bool unmappable(const MapNode* /*mapNode*/, StreamType /*shellStream*/) const

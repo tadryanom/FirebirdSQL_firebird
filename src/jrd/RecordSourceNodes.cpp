@@ -2907,9 +2907,7 @@ void RseNode::pass1Source(thread_db* tdbb, CompilerScratch* csb, RseNode* rse,
 
 			for (const auto boolean : csb->csb_inner_booleans)
 			{
-				if (boolean &&
-					boolean->containsAnyStream(streams) &&
-					!boolean->possiblyUnknown(streams))
+				if (boolean && boolean->ignoreNulls(streams))
 				{
 					rse_jointype = blr_left;
 					break;
@@ -2923,9 +2921,7 @@ void RseNode::pass1Source(thread_db* tdbb, CompilerScratch* csb, RseNode* rse,
 
 		for (const auto boolean : csb->csb_inner_booleans)
 		{
-			if (boolean &&
-				boolean->containsAnyStream(streams) &&
-				!boolean->possiblyUnknown(streams))
+			if (boolean && boolean->ignoreNulls(streams))
 			{
 				if (rse_jointype == blr_full)
 				{
