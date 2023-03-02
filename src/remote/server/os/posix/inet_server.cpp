@@ -119,8 +119,6 @@ static void signal_handler(int);
 static TEXT protocol[128];
 static int INET_SERVER_start = 0;
 
-static bool serverClosing = false;
-
 #if defined(HAVE_SETRLIMIT) && defined(HAVE_GETRLIMIT)
 #define FB_RAISE_LIMITS 1
 static void raiseLimit(int resource);
@@ -483,7 +481,7 @@ int CLIB_ROUTINE main( int argc, char** argv)
 		fb_shutdown_callback(NULL, closePort, fb_shut_exit, port);
 
 		Firebird::FbLocalStatus localStatus;
-		if (!REPL_server(&localStatus, false, &serverClosing))
+		if (!REPL_server(&localStatus, false))
 		{
 			const char* errorMsg = "Replication server initialization error";
 			iscLogStatus(errorMsg, localStatus->getErrors());
