@@ -7252,6 +7252,7 @@ void DatabaseOptions::get(const UCHAR* dpb, USHORT dpb_length, bool& invalid_cli
 
 		case isc_dpb_worker_attach:
 			dpb_worker_attach = true;
+			break;
 
 		case isc_dpb_upgrade_db:
 			dpb_upgrade_db = true;
