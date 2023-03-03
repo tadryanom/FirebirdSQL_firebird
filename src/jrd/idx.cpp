@@ -235,9 +235,13 @@ namespace Jrd {
 class IndexCreateTask : public Task
 {
 public:
+	const ULONG IS_GBAK			= 0x01;		// main attachment is gbak attachment
+	const ULONG IS_LARGE_SCAN	= 0x02;		// relation not fits into page cache
+
 	IndexCreateTask(thread_db* tdbb, MemoryPool* pool, IndexCreation* creation) : Task(),
 		m_pool(pool),
 		m_tdbb_flags(tdbb->tdbb_flags),
+		m_flags(0),
 		m_creation(creation),
 		m_sorts(*m_pool),
 		m_items(*m_pool),
@@ -247,6 +251,9 @@ public:
 	{
 		m_dbb = tdbb->getDatabase();
 		Attachment* att = tdbb->getAttachment();
+
+		if (att->isGbak())
+			m_flags |= IS_GBAK;
 
 		m_exprBlob.clear();
 
@@ -263,6 +270,14 @@ public:
 
 		if (m_creation)
 		{
+			// Unless this is the only attachment or a database restore, worry about
+			// preserving the page working sets of other attachments.
+			if (att && (att != m_dbb->dbb_attachments || att->att_next))
+			{
+				if (att->isGbak() || DPM_data_pages(tdbb, m_creation->relation) > m_dbb->dbb_bcb->bcb_count)
+					m_flags |= IS_LARGE_SCAN;
+			}
+
 			m_countPP = m_creation->relation->getPages(tdbb)->rel_pages->count();
 
 			if ((m_creation->index->idx_flags & idx_expression) && (workers > 1))
@@ -280,6 +295,11 @@ public:
 	bool getWorkItem(WorkItem** pItem);
 	bool getResult(IStatus* status);
 	int getMaxWorkers();
+
+	bool isGbak() const
+	{
+		return (m_flags & IS_GBAK);
+	}
 
 	class Item : public Task::WorkItem
 	{
@@ -339,6 +359,9 @@ public:
 				Arg::Gds(isc_bad_db_handle).copyTo(status);
 				return false;
 			}
+
+			if (getTask()->isGbak())
+				att->att_utility = Attachment::UTIL_GBAK;
 
 			IndexCreation* creation = getTask()->m_creation;
 			tdbb->setDatabase(att->att_database);
@@ -426,6 +449,7 @@ private:
 	MemoryPool* m_pool;
 	Database* m_dbb;
 	const ULONG m_tdbb_flags;
+	ULONG m_flags;
 	IndexCreation* m_creation;
 	SortOwner m_sorts;
 	bid m_exprBlob;
@@ -452,6 +476,8 @@ bool IndexCreateTask::handler(WorkItem& _item)
 		return false;
 	}
 
+	try {
+
 	WorkerContextHolder holder(tdbb, FB_FUNCTION);
 
 	Database* dbb = tdbb->getDatabase();
@@ -473,8 +499,6 @@ bool IndexCreateTask::handler(WorkItem& _item)
 	//primary.getWindow(tdbb).win_flags = secondary.getWindow(tdbb).win_flags = 0; redundant
 
 	IndexErrorContext context(relation, idx, m_creation->index_name);
-
-	try {
 
 	// If scan is finished, do final sort pass over own sort
 	if (item->m_ppSequence == m_countPP)
@@ -542,15 +566,10 @@ bool IndexCreateTask::handler(WorkItem& _item)
 
 	AutoGCRecord gc_record(VIO_gc_record(tdbb, relation));
 
-	// Unless this is the only attachment or a database restore, worry about
-	// preserving the page working sets of other attachments.
-	if (attachment && (attachment != dbb->dbb_attachments || attachment->att_next))
+	if (m_flags & IS_LARGE_SCAN)
 	{
-		if (attachment->isGbak() || DPM_data_pages(tdbb, relation) > dbb->dbb_bcb->bcb_count)
-		{
-			primary.getWindow(tdbb).win_flags = secondary.getWindow(tdbb).win_flags = WIN_large_scan;
-			primary.rpb_org_scans = secondary.rpb_org_scans = relation->rel_scan_count++;
-		}
+		primary.getWindow(tdbb).win_flags = secondary.getWindow(tdbb).win_flags = WIN_large_scan;
+		primary.rpb_org_scans = secondary.rpb_org_scans = relation->rel_scan_count++;
 	}
 
 	const bool isDescending = (idx->idx_flags & idx_descending);

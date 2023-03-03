@@ -321,6 +321,7 @@ StableAttachmentPart* WorkerAttachment::getAttachment(FbStatusVector* status, Da
 		if (att)
 		{
 			att->att_use_count++;
+			att->att_utility = Attachment::UTIL_NONE;
 			att->setupIdleTimer(true);
 		}
 	}
