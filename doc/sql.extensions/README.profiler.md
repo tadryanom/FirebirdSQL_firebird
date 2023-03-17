@@ -1,32 +1,28 @@
 # Profiler (FB 5.0)
 
-The profiler allows users to measure performance cost of SQL and PSQL code.
-
-It's implemented with a system package in the engine passing data to a profiler plugin.
+The profiler allows users to measure performance cost of SQL and PSQL code. It's implemented with a system package in the engine passing data to a profiler plugin.
 
 This documentation treats the engine and plugin parts as a single thing, in the way the default profiler (`Default_Profiler`) is going to be used.
 
-The `RDB$PROFILER` package allows to profile execution of PSQL code collecting statistics of how many times each line was executed along with its minimum, maximum and accumulated execution times (with nanoseconds precision), as well open and fetch statistics of implicit and explicit SQL cursors.
+The `RDB$PROFILER` package can profile execution of PSQL code, collecting statistics of how many times each line was executed along with its minimum, maximum and accumulated execution times (with nanoseconds precision), as well as open and fetch statistics of implicit and explicit SQL cursors.
 
-To collect profile data, an user must first start a profile session with `RDB$PROFILER.START_SESSION`. This function returns an profile session ID which is later stored in the profiler snapshot tables to be queried and analyzed by the user. A profiler session may be local (same attachment) or remote (another attachment).
+To collect profile data, a user must first start a profile session with `RDB$PROFILER.START_SESSION`. This function returns a profile session ID which is later stored in the profiler snapshot tables to be queried and analyzed by the user. A profiler session may be local (same attachment) or remote (another attachment).
 
-Remote profiling just forwards commands to the remote attachment. So it's possible that a client simultaneous profile multiple attachments. It's also possible that a locally or remotely started profile session have commands issued by another attachment.
+Remote profiling just forwards commands to the remote attachment. So, it's possible that a client profiles multiple attachments simultaneously. It's also possible that a locally or remotely started profile session have commands issued by another attachment.
 
-Remote issued commands needs that the target attachment be in an idle state, i.e., not executing others requests. When they are not idle the call blocks waiting for that state.
+Remotely issued commands require that the target attachment is in an idle state, i.e. not executing others requests. When the target attachment is not idle, the call blocks waiting for that state.
 
-If remote attachment is from a different user, the calling user must have system privilege PROFILE_ANY_ATTACHMENT.
+If the remote attachment is from a different user, the calling user must have the system privilege `PROFILE_ANY_ATTACHMENT`.
 
-After a session is started, PSQL and SQL statements statistics starts to be collected in memory. Note that a profile session collects data only of statements executed in the same attachment associated with the session.
+After a session is started, PSQL and SQL statements statistics are collected in memory. A profile session collects data only of statements executed in the same attachment associated with the session. Data is aggregated and stored per requests (i.e. a statement execution). When querying snapshot tables, the user may do extra aggregation per statement, or use the auxiliary views that do that automatically.
 
-Data is aggregated and stored per requests (i.e. a statement execution). When querying snapshot tables, user may do extra aggregation per statements or use the auxiliary views that do that automatically.
+A session may be paused to temporarily disable statistics collecting. It may be resumed later to return statistics collection in the same session.
 
-A session may be paused to temporary disable statistics collecting. It may be resumed later to return statistics collection in the same session.
+A new session may be started when a session is already active. In that case, it has the same semantics of finishing the current session with `RDB$PROFILER.FINISH_SESSION(FALSE)`, so snapshots tables are not updated.
 
-A new session may be started when a session is already active. In this case it has the same semantics of finishing the current session with `RDB$PROFILER.FINISH_SESSION(FALSE)` so snapshots tables are not updated in the same moment.
+To analyze the collected data, the user must flush the data to the snapshot tables, which can be done by finishing or pausing a session (with `FLUSH` parameter set to `TRUE`), or calling `RDB$PROFILER.FLUSH`. Data is flushed using an autonomous transaction (a transaction started and finished for the specific purpose of profiler data update).
 
-To analyze the collected data, the user must flush the data to the snapshot tables, which may be done finishing or pausing a session (with `FLUSH` parameter set to `TRUE`) or calling `RDB$PROFILER.FLUSH`. Data is flushed using an autonomous transaction (a transaction started and finished for the specific purpose of profiler data update).
-
-Following is a sample profile session and queries for data analysis.
+Below is a sample profile session and queries for data analysis.
 
 ```
 -- Preparation - create table and routines that will be analyzed
@@ -128,13 +124,13 @@ select pstat.*
 
 ## Function `START_SESSION`
 
-`RDB$PROFILER.START_SESSION` starts a new profiler session, turns it the current session (of the given `ATTACHMENT_ID`) and return its identifier.
+`RDB$PROFILER.START_SESSION` starts a new profiler session, makes it the current session (of the given `ATTACHMENT_ID`) and returns its identifier.
 
-If `FLUSH_INTERVAL` is different than `NULL` auto-flush is setup in the same way as manually calling `RDB$PROFILER.SET_FLUSH_INTERVAL`.
+If `FLUSH_INTERVAL` is different from `NULL`, auto-flush is setup in the same way as manually calling `RDB$PROFILER.SET_FLUSH_INTERVAL`.
 
-If `PLUGIN_NAME` is `NULL` (the default) it uses the database configuration `DefaultProfilerPlugin`.
+If `PLUGIN_NAME` is `NULL` (the default), it uses the database configuration `DefaultProfilerPlugin`.
 
-`PLUGIN_OPTIONS` is plugin specific options and currently should be `NULL` for `Default_Profiler` plugin.
+`PLUGIN_OPTIONS` are plugin specific options and currently should be `NULL` for `Default_Profiler` plugin.
 
 Input parameters:
  - `DESCRIPTION` type `VARCHAR(255) CHARACTER SET UTF8` default `NULL`
@@ -147,9 +143,9 @@ Return type: `BIGINT NOT NULL`.
 
 ## Procedure `PAUSE_SESSION`
 
-`RDB$PROFILER.PAUSE_SESSION` pauses the current profiler session (of the given `ATTACHMENT_ID`) so the next executed statements statistics are not collected.
+`RDB$PROFILER.PAUSE_SESSION` pauses the current profiler session (of the given `ATTACHMENT_ID`), so the next executed statements statistics are not collected.
 
-If `FLUSH` is `TRUE` the snapshot tables are updated with data up to the current moment. Otherwise data remains only in memory for later update.
+If `FLUSH` is `TRUE`, the snapshot tables are updated with data up to the current moment, otherwise data remains only in memory for later update.
 
 Calling `RDB$PROFILER.PAUSE_SESSION(TRUE)` has the same semantics of calling `RDB$PROFILER.PAUSE_SESSION(FALSE)` followed by `RDB$PROFILER.FLUSH` (using the same `ATTACHMENT_ID`).
 
@@ -159,7 +155,7 @@ Input parameters:
 
 ## Procedure `RESUME_SESSION`
 
-`RDB$PROFILER.RESUME_SESSION` resumes the current profiler session (of the given `ATTACHMENT_ID`) if it was paused so the next executed statements statistics are collected again.
+`RDB$PROFILER.RESUME_SESSION` resumes the current profiler session (of the given `ATTACHMENT_ID`), if it was paused, so the next executed statements statistics are collected again.
 
 Input parameters:
  - `ATTACHMENT_ID` type `BIGINT NOT NULL` default `CURRENT_CONNECTION`
@@ -168,7 +164,7 @@ Input parameters:
 
 `RDB$PROFILER.FINISH_SESSION` finishes the current profiler session (of the given `ATTACHMENT_ID`).
 
-If `FLUSH` is `TRUE` the snapshot tables are updated with data of the finished session (and old finished sessions not yet present in the snapshot). Otherwise data remains only in memory for later update.
+If `FLUSH` is `TRUE`, the snapshot tables are updated with data of the finished session (and old finished sessions not yet present in the snapshot), otherwise data remains only in memory for later update.
 
 Calling `RDB$PROFILER.FINISH_SESSION(TRUE)` has the same semantics of calling `RDB$PROFILER.FINISH_SESSION(FALSE)` followed by `RDB$PROFILER.FLUSH` (using the same `ATTACHMENT_ID`).
 
@@ -200,7 +196,7 @@ Input parameters:
 
 `RDB$PROFILER.FLUSH` updates the snapshot tables with data from the profile sessions (of the given `ATTACHMENT_ID`) in memory.
 
-After update data is stored in tables `PLG$PROF_SESSIONS`, `PLG$PROF_STATEMENTS`, `PLG$PROF_RECORD_SOURCES`, `PLG$PROF_REQUESTS`, `PLG$PROF_PSQL_STATS` and `PLG$PROF_RECORD_SOURCE_STATS` and may be read and analyzed by the user.
+After flushing, the data is stored in tables `PLG$PROF_SESSIONS`, `PLG$PROF_STATEMENTS`, `PLG$PROF_RECORD_SOURCES`, `PLG$PROF_REQUESTS`, `PLG$PROF_PSQL_STATS` and `PLG$PROF_RECORD_SOURCE_STATS` and may be read and analyzed by the user.
 
 Data is updated using an autonomous transaction, so if the procedure is called in a snapshot transaction, data will not be directly readable in the same transaction.
 
@@ -221,9 +217,9 @@ Input parameters:
 
 # Snapshot tables
 
-Snapshot tables (as well views and sequence) are automatically created in the first usage of the profiler. They are owned by the current user with read/write permissions for `PUBLIC`.
+Snapshot tables (as well views and sequence) are automatically created in the first usage of the profiler. They are owned by the database owner, with read/write permissions for `PUBLIC`.
 
-When a session is deleted the related data in others profiler snapshot tables are automatically deleted too through foregin keys with `DELETE CASCADE` option.
+When a session is deleted, the related data in other profiler snapshot tables are automatically deleted too through foreign keys with `DELETE CASCADE` option.
 
 Below is the list of tables that stores profile data.
 
@@ -315,7 +311,7 @@ These views help profile data extraction aggregated at statement level.
 
 They should be the preferred way to analyze the collected data. They can also be used together with the tables to get additional data not present on the views.
 
-After hot spots are found, one can drill down in the data at the request level through the tables.
+After hotspots are found, one can drill down in the data at the request level through the tables.
 
 ## View `PLG$PROF_STATEMENT_STATS_VIEW`
 ```
