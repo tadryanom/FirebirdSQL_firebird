@@ -1,4 +1,4 @@
-# v5.0 Beta 1 (planned)
+# v5.0 Beta 1 (27-Mar-2023)
 
 ## New features
 
