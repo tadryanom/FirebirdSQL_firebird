@@ -1147,6 +1147,9 @@ inline static void reset(IStatus* status) throw()
 
 inline static void defer_packet(rem_port* port, PACKET* packet, bool sent = false)
 {
+	fb_assert(port->port_flags & PORT_lazy);
+	fb_assert(port->port_deferred_packets);
+
 	// hvlad: passed packet often is rdb->rdb_packet and therefore can be
 	// changed inside clear_queue. To not confuse caller we must preserve
 	// packet content
@@ -7844,7 +7847,7 @@ static void finalize(rem_port* port)
 {
 /**************************************
  *
- *	d i s c o n n e c t
+ *	f i n a l i z e
  *
  **************************************
  *
@@ -7859,6 +7862,10 @@ static void finalize(rem_port* port)
 
 	// Avoid async send during finalize
 	RefMutexGuard guard(*port->port_write_sync, FB_FUNCTION);
+
+	// recheck with mutex taken
+	if (port->port_flags & PORT_detached)
+		return;
 
 	// Send a disconnect to the server so that it
 	// gracefully terminates.
@@ -7884,14 +7891,13 @@ static void finalize(rem_port* port)
 		port->send(packet);
 
 		REMOTE_free_packet(port, packet);
-		delete rdb;
-		port->port_context = nullptr;
 	}
 
 	// Cleanup the queue
 
 	delete port->port_deferred_packets;
 	port->port_deferred_packets = nullptr;
+	port->port_flags &= ~PORT_lazy;
 
 	port->port_flags |= PORT_detached;
 }
@@ -7911,6 +7917,9 @@ static void disconnect(rem_port* port, bool rmRef)
 
 	finalize(port);
 
+	Rdb* rdb = port->port_context;
+	port->port_context = nullptr;
+
 	// Clear context reference for the associated event handler
 	// to avoid SEGV during shutdown
 
@@ -7925,6 +7934,7 @@ static void disconnect(rem_port* port, bool rmRef)
 
 	port->port_flags |= PORT_disconnect;
 	port->disconnect();
+	delete rdb;
 
 	// Remove from active ports
 
@@ -9235,17 +9245,20 @@ static void send_partial_packet(rem_port* port, PACKET* packet)
 
 	// Send packets that were deferred
 
-	for (rem_que_packet* p = port->port_deferred_packets->begin();
-		p < port->port_deferred_packets->end(); p++)
+	if (port->port_deferred_packets)
 	{
-		if (!p->sent)
+		for (rem_que_packet* p = port->port_deferred_packets->begin();
+			p < port->port_deferred_packets->end(); p++)
 		{
-			if (!port->send_partial(&p->packet))
+			if (!p->sent)
 			{
-				(Arg::Gds(isc_net_write_err) <<
-				 Arg::Gds(isc_random) << "send_partial_packet/send_partial").raise();
+				if (!port->send_partial(&p->packet))
+				{
+					(Arg::Gds(isc_net_write_err) <<
+					 Arg::Gds(isc_random) << "send_partial_packet/send_partial").raise();
+				}
+				p->sent = true;
 			}
-			p->sent = true;
 		}
 	}
 
