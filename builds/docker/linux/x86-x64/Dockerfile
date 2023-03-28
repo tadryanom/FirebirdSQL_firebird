@@ -203,7 +203,8 @@ RUN apt-get update && \
 	apt-get -y install \
 		cmake \
 		libfile-copy-recursive-perl \
-		unzip && \
+		unzip \
+		xz-utils && \
 	rm -rf /var/lib/apt/lists/*
 
 RUN groupadd -g $ARG_CTNG_GID ctng && \

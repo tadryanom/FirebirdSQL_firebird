@@ -124,6 +124,70 @@ jobs:
           files: |
             gen/Firebird-*-linux-${{ matrix.arch }}*.tar.gz
 
+  build-src-bundle-docker:
+    name: build-src-bundle-docker
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 10
+
+      - name: Build
+        run: |
+          cd builds/docker/linux/x86-x64
+          ./run-src-bundle.sh
+
+      - name: Snapshot - prepare
+        id: snapshot_prepare
+        if: |
+          github.repository == 'FirebirdSQL/firebird' &&
+          github.event.head_commit.message == 'increment build number' &&
+          github.ref_name == 'master'
+        run: |
+          echo "snapshot_name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+
+      - name: Snapshot - delete old assets
+        uses: mknejp/delete-release-assets@v1
+        if: steps.snapshot_prepare.outputs.snapshot_name
+        with:
+          repository: FirebirdSQL/snapshots
+          token: ${{ secrets.SNAPSHOT_RELEASE_TOKEN }}
+          tag: snapshot-${{ steps.snapshot_prepare.outputs.snapshot_name }}
+          fail-if-no-release: false
+          fail-if-no-assets: false
+          assets: |
+            Firebird-*-source.tar.xz
+
+      - name: Snapshot - release
+        id: snapshot_release_try1
+        uses: softprops/action-gh-release@v1
+        if: steps.snapshot_prepare.outputs.snapshot_name
+        continue-on-error: true
+        with:
+          repository: FirebirdSQL/snapshots
+          name: Latest snapshots for ${{ steps.snapshot_prepare.outputs.snapshot_name }}
+          tag_name: snapshot-${{ steps.snapshot_prepare.outputs.snapshot_name }}
+          prerelease: true
+          token: ${{ secrets.SNAPSHOT_RELEASE_TOKEN }}
+          files: |
+            gen/Firebird-*-source.tar.xz
+
+      - name: Snapshot - release (retry)
+        uses: softprops/action-gh-release@v1
+        if: |
+          steps.snapshot_prepare.outputs.snapshot_name &&
+          steps.snapshot_release_try1.outcome == 'failure'
+        with:
+          repository: FirebirdSQL/snapshots
+          name: Latest snapshots for ${{ steps.snapshot_prepare.outputs.snapshot_name }}
+          tag_name: snapshot-${{ steps.snapshot_prepare.outputs.snapshot_name }}
+          prerelease: true
+          token: ${{ secrets.SNAPSHOT_RELEASE_TOKEN }}
+          files: |
+            gen/Firebird-*-source.tar.xz
+
   build-alpine-x64:
     runs-on: ubuntu-20.04
     container: alpine:3.14
