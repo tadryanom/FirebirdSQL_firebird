@@ -1632,10 +1632,15 @@ void Optimizer::checkIndices()
 		// If there were no indices fetched at all but the user specified some,
 		// error out using the first index specified
 
-		if (!tail->csb_idx && plan->accessType && !tdbb->getAttachment()->isGbak())
+		const bool isGbak = true || tdbb->getAttachment()->isGbak();
+
+		if (!tail->csb_idx && plan->accessType)
 		{
 			// index %s cannot be used in the specified plan
-			ERR_post(Arg::Gds(isc_index_unused) << plan->accessType->items[0].indexName);
+			if (isGbak)
+				ERR_post_warning(Arg::Warning(isc_index_unused) << plan->accessType->items[0].indexName);
+			else
+				ERR_post(Arg::Gds(isc_index_unused) << plan->accessType->items[0].indexName);
 		}
 
 		if (!tail->csb_idx)
@@ -1656,7 +1661,10 @@ void Optimizer::checkIndices()
 					index_name = "";
 
 				// index %s cannot be used in the specified plan
-				ERR_post(Arg::Gds(isc_index_unused) << Arg::Str(index_name));
+				if (isGbak)
+					ERR_post_warning(Arg::Warning(isc_index_unused) << Arg::Str(index_name));
+				else
+					ERR_post(Arg::Gds(isc_index_unused) << Arg::Str(index_name));
 			}
 		}
 	}
