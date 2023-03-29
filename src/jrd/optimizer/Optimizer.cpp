@@ -1632,7 +1632,7 @@ void Optimizer::checkIndices()
 		// If there were no indices fetched at all but the user specified some,
 		// error out using the first index specified
 
-		const bool isGbak = true || tdbb->getAttachment()->isGbak();
+		const bool isGbak = tdbb->getAttachment()->isGbak();
 
 		if (!tail->csb_idx && plan->accessType)
 		{
