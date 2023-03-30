@@ -266,14 +266,17 @@
 ;#endif
 
 
-;Some more strings to distinguish the name of final executable
+; Some more strings to distinguish the name of final executable
+; shipping with debug symbols should not be confused with actual debug builds
 #ifdef ship_pdb
 #define pdb_str="-withDebugSymbols"
 #else
 #define pdb_str=""
 #endif
+; This is intended for builds that have been built with the debug flag
+; So far we have never actually released such a build.
 #if GetEnv("FBBUILD_BUILDTYPE") == "debug"
-#define debug_str="-withDebugSymbols"
+#define debug_str="-debugbuild"
 #else
 #define debug_str=""
 #endif
