@@ -297,8 +297,8 @@ AppVersion={#MyAppVerString}
 VersionInfoVersion={#MyAppVerString}
 
 SourceDir={#Root}
-OutputBaseFilename={#MyAppName}-{#MyAppVerString}-{#PackageNumber}-windows-{#ReleasePlatformTarget}{#debug_str}{#pdb_str}{#FilenameSuffix}
-;OutputManifestFile={#MyAppName}-{#MyAppVerString}-{#PackageNumber}-windows-{#ReleasePlatformTarget}{#debug_str}{#pdb_str}{#FilenameSuffix}-Setup-Manifest.txt
+OutputBaseFilename={#MyAppName}-{#MyAppVerString}-{#PackageNumber}{#FilenameSuffix}-windows-{#ReleasePlatformTarget}{#debug_str}{#pdb_str}
+;OutputManifestFile={#MyAppName}-{#MyAppVerString}-{#PackageNumber}{#FilenameSuffix}-windows-{#ReleasePlatformTarget}{#debug_str}{#pdb_str}-Setup-Manifest.txt
 OutputDir=builds\install_images
 ;!!! These directories are as seen from SourceDir !!!
 #define ScriptsDir "builds\install\arch-specific\win32"
