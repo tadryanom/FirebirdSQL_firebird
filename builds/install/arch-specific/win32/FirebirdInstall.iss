@@ -251,6 +251,7 @@
 #define AppVer FB_MAJOR_VER + "_" + FB_MINOR_VER
 #define GroupnameVer FB_MAJOR_VER + "." + FB_MINOR_VER
 #define FB_cur_ver FB_MAJOR_VER + "." + FB_MINOR_VER + "." + FB_REV_NO
+#define FB_display_ver FB_cur_ver + FilenameSuffix
 
 ; We can save space by shipping a pdb package that just includes
 ; the pdb files. It would then upgrade an existing installation,
@@ -446,17 +447,17 @@ Root: HKLM; Subkey: "SOFTWARE\FirebirdSQL"; ValueType: none; Flags: deletekey;
 Name: {group}\Firebird Server; Filename: {app}\firebird.exe; Parameters: {code:StartAppParams}; Flags: runminimized; MinVersion: {#MinVer};  Check: InstallServerIcon; IconIndex: 0; Components: ServerComponent; Comment: Run Firebird Server (without guardian)
 Name: {group}\Firebird Guardian; Filename: {app}\fbguard.exe; Parameters: {code:StartAppParams}; Flags: runminimized; MinVersion: {#MinVer};  Check: InstallGuardianIcon; IconIndex: 1; Components: ServerComponent; Comment: Run Firebird Server (with guardian);
 Name: {group}\Firebird ISQL Tool; Filename: {app}\isql.exe; Parameters: -z; WorkingDir: {app}; MinVersion: {#MinVer};  Comment: {cm:RunISQL}
-Name: {group}\Firebird {#FB_cur_ver} Release Notes; Filename: {app}\doc\Firebird_v{#FB_cur_ver}.ReleaseNotes.pdf; MinVersion: {#MinVer}; Comment: {#MyAppName} {cm:ReleaseNotes}
-;Name: {group}\Firebird {#GroupnameVer} Quick Start Guide; Filename: {app}\doc\Firebird-{#FB_MAJOR_VER}-QuickStart.pdf; MinVersion: {#MinVer}; Comment: {#MyAppName} {#FB_cur_ver}
+Name: {group}\Firebird {#FB_display_ver} Release Notes; Filename: {app}\doc\Firebird-{#FB_display_ver}-ReleaseNotes.pdf; MinVersion: {#MinVer}; Comment: {#MyAppName} {cm:ReleaseNotes}
+;Name: {group}\Firebird {#GroupnameVer} Quick Start Guide; Filename: {app}\doc\Firebird-{#FB_MAJOR_VER}-QuickStart.pdf; MinVersion: {#MinVer}; Comment: {#MyAppName} {#FB_display_ver}
 Name: "{group}\After Installation"; Filename: "{app}\doc\After_Installation.url"; Comment: "New User? Here's a quick guide to what you should do next."
 Name: "{group}\Firebird Web-site"; Filename: "{app}\doc\firebirdsql.org.url"
 ;Always install the original english version
-Name: {group}\{cm:IconReadme,{#FB_cur_ver}}; Filename: {app}\readme.txt; MinVersion: {#MinVer};
+Name: {group}\{cm:IconReadme,{#FB_display_ver}}; Filename: {app}\readme.txt; MinVersion: {#MinVer};
 #ifdef i18n
 ;And install translated readme.txt if non-default language is chosen.
-Name: {group}\{cm:IconReadme,{#FB_cur_ver}}; Filename: {app}\{cm:ReadMeFile}; MinVersion: {#MinVer}; Components: DevAdminComponent; Check: NonDefaultLanguage;
+Name: {group}\{cm:IconReadme,{#FB_display_ver}}; Filename: {app}\{cm:ReadMeFile}; MinVersion: {#MinVer}; Components: DevAdminComponent; Check: NonDefaultLanguage;
 #endif
-Name: {group}\{cm:Uninstall,{#FB_cur_ver}}; Filename: {uninstallexe}; Comment: Uninstall Firebird
+Name: {group}\{cm:Uninstall,{#FB_display_ver}}; Filename: {uninstallexe}; Comment: Uninstall Firebird
 
 [Files]
 #ifdef files
