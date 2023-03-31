@@ -1140,6 +1140,12 @@ namespace
 		}
 
 	public:
+		virtual int release() override
+		{
+			// Never delete static instance of SystemEngine
+			return 1;
+		}
+
 		void open(ThrowStatusExceptionWrapper* status, IExternalContext* context,
 			char* name, unsigned nameSize) override
 		{
