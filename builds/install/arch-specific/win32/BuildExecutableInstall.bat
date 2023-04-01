@@ -547,16 +547,17 @@ if not defined MD5_COMMAND (
   call :WARNING md5sum utility not found. Cannot generate md5 sums.
   @goto :EOF
 )
-@echo Generating md5sums for Firebird-%PRODUCT_VER_STRING%-%FBBUILD_PACKAGE_NUMBER%
+set FBBUILD_MD5SUMS_FILENAME=Firebird-%PRODUCT_VER_STRING%-%FBBUILD_PACKAGE_NUMBER%%FBBUILD_FILENAME_SUFFIX%-windows.md5sum
+@echo Generating md5sums for %FBBUILD_MD5SUMS_FILENAME%
 
 :: write sums into temporary file to avoid including it into the process
 pushd %FBBUILD_INSTALL_IMAGES%
-call %MD5_COMMAND% Firebird-%PRODUCT_VER_STRING%?%FBBUILD_PACKAGE_NUMBER%*.* >md5sum.tmp
+call %MD5_COMMAND% Firebird-%PRODUCT_VER_STRING%-%FBBUILD_PACKAGE_NUMBER%*.* > md5sum.tmp
 
 :: then rename it to the proper name
 if not ERRORLEVEL 1 (
-  del Firebird-%PRODUCT_VER_STRING%-%FBBUILD_PACKAGE_NUMBER%.md5sum >nul 2>nul
-  ren md5sum.tmp Firebird-%PRODUCT_VER_STRING%-%FBBUILD_PACKAGE_NUMBER%.md5sum
+  del %FBBUILD_MD5SUMS_FILENAME% >nul 2>nul
+  ren md5sum.tmp %FBBUILD_MD5SUMS_FILENAME%
 ) else (
      (@echo Error calling %0 & popd & @goto :END)
 )
