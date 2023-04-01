@@ -1,0 +1,28 @@
+name: increment-build-number
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 23 * * *'
+
+jobs:
+  increment-build-number:
+    if: github.repository == 'FirebirdSQL/firebird'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.SNAPSHOT_RELEASE_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: Run setupBuildNum.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.SNAPSHOT_RELEASE_TOKEN }}
+        run: |
+          sh setupBuildNum.sh
