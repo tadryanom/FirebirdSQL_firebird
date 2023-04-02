@@ -170,7 +170,7 @@ ISC_INT64 TraceTransactionImpl::getInitialID()
 ISC_INT64 TraceSQLStatementImpl::getStmtID()
 {
 	if (m_stmt->getRequest())
-		return m_stmt->getRequest()->getRequestId();
+		return m_stmt->getRequest()->getStatement()->getStatementId();
 
 	return 0;
 }
