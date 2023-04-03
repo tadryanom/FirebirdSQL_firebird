@@ -325,6 +325,7 @@ namespace Jrd {
 	{
 		if (flags & CRYPT_HDR_INIT)
 		{
+			ThreadStatusGuard guard(tdbb);
 			if (LCK_lock(tdbb, stateLock, CRYPT_INIT, LCK_NO_WAIT))
 			{
 				LCK_write_data(tdbb, stateLock, 1);
@@ -341,6 +342,7 @@ namespace Jrd {
 		}
 		else
 		{
+			ThreadStatusGuard guard(tdbb);
 			if (!LCK_convert(tdbb, stateLock, CRYPT_NORMAL,
 					(flags & CRYPT_HDR_NOWAIT) ? LCK_NO_WAIT : LCK_WAIT))
 			{
@@ -351,7 +353,6 @@ namespace Jrd {
 			else
 				slowIO = 0;
 		}
-		tdbb->tdbb_status_vector->init();
 
 		PhysHdr hdr(tdbb);
 		crypt = hdr->hdr_flags & Ods::hdr_encrypted;

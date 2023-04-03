@@ -1740,7 +1740,9 @@ JAttachment* JProvider::internalAttach(CheckStatusWrapper* user_status, const ch
 				guardDbInit.leave();
 			}
 
-			EngineContextHolder tdbb(user_status, jAtt, FB_FUNCTION, AttachmentHolder::ATT_DONT_LOCK);
+			// Don't pass user_status into ctor to keep warnings
+			EngineContextHolder tdbb(nullptr, jAtt, FB_FUNCTION, AttachmentHolder::ATT_DONT_LOCK);
+			tdbb->tdbb_status_vector = user_status;
 
 			attachment->att_crypt_callback = getDefCryptCallback(cryptCallback);
 			attachment->att_client_charset = attachment->att_charset = options.dpb_interp;
@@ -2909,7 +2911,9 @@ JAttachment* JProvider::createDatabase(CheckStatusWrapper* user_status, const ch
 			Sync dbbGuard(&dbb->dbb_sync, "createDatabase");
 			dbbGuard.lock(SYNC_EXCLUSIVE);
 
-			EngineContextHolder tdbb(user_status, jAtt, FB_FUNCTION, AttachmentHolder::ATT_DONT_LOCK);
+			// Don't pass user_status into ctor to keep warnings
+			EngineContextHolder tdbb(nullptr, jAtt, FB_FUNCTION, AttachmentHolder::ATT_DONT_LOCK);
+			tdbb->tdbb_status_vector = user_status;
 
 			attachment->att_crypt_callback = getDefCryptCallback(cryptCallback);
 
@@ -7240,13 +7244,20 @@ void DatabaseOptions::get(const UCHAR* dpb, USHORT dpb_length, bool& invalid_cli
 		case isc_dpb_parallel_workers:
 			dpb_parallel_workers = (SSHORT) rdr.getInt();
 
-			if (dpb_parallel_workers > Config::getMaxParallelWorkers() ||
-				dpb_parallel_workers < 0)
 			{
-				string str;
-				str.printf("Wrong parallel workers value %i, valid range are from 1 to %i",
-							dpb_parallel_workers, Config::getMaxParallelWorkers());
-				ERR_post(Arg::Gds(isc_bad_dpb_content) << Arg::Gds(isc_random) << Arg::Str(str));
+				const auto maxWorkers = Config::getMaxParallelWorkers();
+				if (dpb_parallel_workers > maxWorkers || dpb_parallel_workers < 0)
+				{
+					// "Wrong parallel workers value @1, valid range are from 1 to @2"
+					ERR_post_warning(Arg::Warning(isc_bad_par_workers) <<
+						Arg::Num(dpb_parallel_workers) <<
+						Arg::Num(maxWorkers));
+
+					if (dpb_parallel_workers < 0)
+						dpb_parallel_workers = 1;
+					else
+						dpb_parallel_workers = maxWorkers;
+				}
 			}
 			break;
 

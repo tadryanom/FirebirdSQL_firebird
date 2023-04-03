@@ -1054,6 +1054,11 @@ void create_database(BurpGlobals* tdgbl, Firebird::IProvider* provider, const TE
 		// msg 33 failed to create database %s
 	}
 
+	if (status_vector->getState() & Firebird::IStatus::STATE_WARNINGS)
+	{
+		BURP_print_warning(&status_vector);
+	}
+
 	// get remote protocol version
 	ProtocolVersion pv(&tdgbl->gbl_network_protocol);
 	Firebird::UtilInterfacePtr()->getFbVersion(&status_vector, DB, &pv);
