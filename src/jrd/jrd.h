@@ -771,22 +771,20 @@ class ThreadContextHolder
 {
 public:
 	explicit ThreadContextHolder(Firebird::CheckStatusWrapper* status = NULL)
-		: currentStatus(status ? status : &localStatus), context(currentStatus)
+		: context(status ? status : &localStatus)
 	{
 		context.putSpecific();
-		currentStatus->init();
 
 		if (!cds::threading::Manager::isThreadAttached())
 			cds::threading::Manager::attachThread();
 	}
 
 	ThreadContextHolder(Database* dbb, Jrd::Attachment* att, FbStatusVector* status = NULL)
-		: currentStatus(status ? status : &localStatus), context(currentStatus)
+		: context(status ? status : &localStatus)
 	{
 		context.putSpecific();
 		context.setDatabase(dbb);
 		context.setAttachment(att);
-		currentStatus->init();
 
 		if (!cds::threading::Manager::isThreadAttached())
 			cds::threading::Manager::attachThread();
@@ -813,7 +811,6 @@ private:
 	ThreadContextHolder& operator= (const ThreadContextHolder&);
 
 	Firebird::FbLocalStatus localStatus;
-	FbStatusVector* currentStatus;
 	thread_db context;
 };
 
