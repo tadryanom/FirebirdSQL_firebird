@@ -392,6 +392,7 @@ const char
 	STATEMENT_TIMEOUT[] = "STATEMENT_TIMEOUT",
 	EFFECTIVE_USER_NAME[] = "EFFECTIVE_USER",
 	SESSION_TIMEZONE[] = "SESSION_TIMEZONE",
+	PARALLEL_WORKERS[] = "PARALLEL_WORKERS",
 	// SYSTEM namespace: transaction wise items
 	TRANSACTION_ID_NAME[] = "TRANSACTION_ID",
 	ISOLATION_LEVEL_NAME[] = "ISOLATION_LEVEL",
@@ -4701,6 +4702,8 @@ dsc* evlGetContext(thread_db* tdbb, const SysFunction*, const NestValueArray& ar
 			TimeZoneUtil::format(timeZoneBuffer, sizeof(timeZoneBuffer), attachment->att_current_timezone);
 			resultStr = timeZoneBuffer;
 		}
+		else if (nameStr == PARALLEL_WORKERS)
+			resultStr.printf("%d", attachment->att_parallel_workers);
 		else
 		{
 			// "Context variable %s is not found in namespace %s"

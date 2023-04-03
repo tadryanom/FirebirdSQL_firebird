@@ -176,6 +176,8 @@ enum db_info_types
 	fb_info_username = 147,
 	fb_info_sqlrole = 148,
 
+	fb_info_parallel_workers = 149,
+
 	isc_info_db_last_value   /* Leave this LAST! */
 };
 

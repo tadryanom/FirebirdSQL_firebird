@@ -232,3 +232,5 @@
 	FIELD(fld_blob			, nam_blob			, dtype_blob	, BLOB_SIZE					, isc_blob_untyped			, NULL		, true		, ODS_13_1)
 	FIELD(fld_varybinary_max, nam_varbinary_max	, dtype_varying	, MAX_VARY_COLUMN_SIZE		, 0							, NULL		, true		, ODS_13_1)
 	FIELD(fld_integer		, nam_integer		, dtype_long	, sizeof(SLONG)				, 0							, NULL		, true		, ODS_13_1)
+
+	FIELD(fld_par_workers	, nam_par_workers	, dtype_long	, sizeof(SLONG)				, 0							, NULL		, true		, ODS_13_1)

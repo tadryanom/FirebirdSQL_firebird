@@ -1048,6 +1048,8 @@ void Monitoring::putAttachment(SnapshotData::DumpRecord& record, const Jrd::Atta
 	TimeZoneUtil::format(timeZoneBuffer, sizeof(timeZoneBuffer), attachment->att_current_timezone);
 	record.storeString(f_mon_att_session_tz, string(timeZoneBuffer));
 
+	record.storeInteger(f_mon_att_par_workers, attachment->att_parallel_workers);
+
 	record.write();
 
 	if (attachment->att_database->dbb_flags & DBB_shared)

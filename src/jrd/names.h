@@ -471,3 +471,5 @@ NAME("RDB$BLOB_UTIL_HANDLE", nam_butil_handle)
 NAME("RDB$BLOB", nam_blob)
 NAME("RDB$VARBINARY_MAX", nam_varbinary_max)
 NAME("RDB$INTEGER", nam_integer)
+
+NAME("MON$PARALLEL_WORKERS", nam_par_workers)
