@@ -749,8 +749,14 @@ void SnapshotData::putField(thread_db* tdbb, Record* record, const DumpField& fi
 	{
 		if (to_desc.isBlob())
 		{
+			const UCHAR bpb[] = {
+				isc_bpb_version1,
+				isc_bpb_type, 1, isc_bpb_type_stream,
+				isc_bpb_storage, 1, isc_bpb_storage_temp
+			};
+
 			bid blob_id;
-			blb* const blob = blb::create(tdbb, transaction, &blob_id);
+			blb* const blob = blb::create2(tdbb, transaction, &blob_id, sizeof(bpb), bpb);
 			blob->BLB_put_data(tdbb, (UCHAR*) field.data, field.length);
 			blob->BLB_close(tdbb);
 
