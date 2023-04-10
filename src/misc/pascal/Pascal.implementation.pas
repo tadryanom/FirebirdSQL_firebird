@@ -24,6 +24,7 @@ end;
 class procedure FbException.catchException(status: IStatus; e: Exception);
 var
 	statusVector: array[0..4] of NativeIntPtr;
+	msg: AnsiString;
 begin
 	if (not Assigned(status)) then
 		Exit;
@@ -32,10 +33,12 @@ begin
 		status.setErrors(FbException(e).getStatus.getErrors)
 	else
 	begin
+		msg := AnsiString(e.message);
+
 		statusVector[0] := NativeIntPtr(isc_arg_gds);
 		statusVector[1] := NativeIntPtr(isc_random);
 		statusVector[2] := NativeIntPtr(isc_arg_string);
-		statusVector[3] := NativeIntPtr(PAnsiChar(AnsiString(e.message)));
+		statusVector[3] := NativeIntPtr(PAnsiChar(msg));
 		statusVector[4] := NativeIntPtr(isc_arg_end);
 
 		status.setErrors(@statusVector);
