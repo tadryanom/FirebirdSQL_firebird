@@ -1345,7 +1345,7 @@ void PascalGenerator::generate()
 				}
 				else
 				{
-					char* sResult;
+					const char* sResult;
 					switch (method->returnTypeRef.token.type)
 					{
 						case Token::TYPE_STRING:
