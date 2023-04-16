@@ -218,8 +218,8 @@ static const Switches::in_sw_tab_t alice_in_sw_table[] =
 		sw_list, 0, false, false, 41, 2, NULL},
 	// msg 41: \t-prompt\t\tprompt for commit/rollback (-l)
 	{IN_SW_ALICE_PARALLEL_WORKERS, isc_spb_rpr_par_workers, "PARALLEL", sw_parallel_workers,
-		sw_sweep, 0, false, false, 136, 3, NULL},
-	// msg 136:   -par(allel)          parallel workers <n> (-sweep)
+		sw_sweep | sw_icu, 0, false, false, 136, 3, NULL},
+	// msg 136:   -par(allel)          parallel workers <n> (-sweep, -icu)
 	{IN_SW_ALICE_PASSWORD, 0, "PASSWORD", sw_password,
 		0, (sw_trusted_auth | sw_fetch_password),
 		false, false, 42, 2, NULL},
