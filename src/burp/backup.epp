@@ -1528,7 +1528,7 @@ void put_data(burp_rel* relation, ReadRelationReq* request)
 		xdr_buffer.lstr_address = NULL;
 
 	RCRD_LENGTH record_length = reqMeta->m_outRecLen;
-	FB_UINT64 records = 0;
+
 	while (true)
 	{
 		if (task->isStopped())
@@ -1542,8 +1542,6 @@ void put_data(burp_rel* relation, ReadRelationReq* request)
 		}
 		if (!request->eof())
 			break;
-
-		records++;
 
 		put(tdgbl, (UCHAR) rec_data);
 		put_int32(att_data_length, record_length);

@@ -143,7 +143,6 @@ static ULONG memory_init(thread_db*, BufferControl*, ULONG);
 static void page_validation_error(thread_db*, win*, SSHORT);
 static void purgePrecedence(BufferControl*, BufferDesc*);
 static SSHORT related(BufferDesc*, const BufferDesc*, SSHORT, const ULONG);
-static bool writeable(BufferDesc*);
 static bool is_writeable(BufferDesc*, const ULONG);
 static int write_buffer(thread_db*, BufferDesc*, const PageNumber, const bool, FbStatusVector* const,
 	const bool);
@@ -4577,6 +4576,7 @@ static SSHORT related(BufferDesc* low, const BufferDesc* high, SSHORT limit, con
 }
 
 
+#ifdef NOT_USED_OR_REPLACED
 static inline bool writeable(BufferDesc* bdb)
 {
 /**************************************
@@ -4611,6 +4611,7 @@ static inline bool writeable(BufferDesc* bdb)
 	const ULONG mark = get_prec_walk_mark(bcb);
 	return is_writeable(bdb, mark);
 }
+#endif	// NOT_USED_OR_REPLACED
 
 
 static bool is_writeable(BufferDesc* bdb, const ULONG mark)
