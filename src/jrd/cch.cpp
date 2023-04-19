@@ -143,7 +143,6 @@ static ULONG memory_init(thread_db*, BufferControl*, ULONG);
 static void page_validation_error(thread_db*, win*, SSHORT);
 static void purgePrecedence(BufferControl*, BufferDesc*);
 static SSHORT related(BufferDesc*, const BufferDesc*, SSHORT, const ULONG);
-static bool is_writeable(BufferDesc*, const ULONG);
 static int write_buffer(thread_db*, BufferDesc*, const PageNumber, const bool, FbStatusVector* const,
 	const bool);
 static bool write_page(thread_db*, BufferDesc*, FbStatusVector* const, const bool);
@@ -1740,8 +1739,8 @@ void CCH_mark(thread_db* tdbb, WIN* window, bool mark_system, bool must_write)
 	if (mark_system)
 		newFlags |= BDB_system_dirty;
 
-	/*if (bcb->bcb_flags & BCB_exclusive) */
-		newFlags |= BDB_db_dirty;
+	/// if (bcb->bcb_flags & BCB_exclusive)
+	newFlags |= BDB_db_dirty;
 
 	if (must_write || dbb->dbb_backup_manager->databaseFlushInProgress())
 		newFlags |= BDB_must_write;
@@ -4611,7 +4610,6 @@ static inline bool writeable(BufferDesc* bdb)
 	const ULONG mark = get_prec_walk_mark(bcb);
 	return is_writeable(bdb, mark);
 }
-#endif	// NOT_USED_OR_REPLACED
 
 
 static bool is_writeable(BufferDesc* bdb, const ULONG mark)
@@ -4656,6 +4654,7 @@ static bool is_writeable(BufferDesc* bdb, const ULONG mark)
 	bdb->bdb_prec_walk_mark = mark;
 	return true;
 }
+#endif	// NOT_USED_OR_REPLACED
 
 
 static int write_buffer(thread_db* tdbb,
