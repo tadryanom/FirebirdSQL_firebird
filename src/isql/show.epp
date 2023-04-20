@@ -106,6 +106,8 @@ static void show_index(SCHAR*, SCHAR*, const SSHORT, const SSHORT, const SSHORT)
 static processing_state show_indices(const SCHAR* const*);
 static processing_state show_proc(const SCHAR*, bool);
 static processing_state show_packages(const SCHAR* package_name, bool, const SCHAR* = NULL);
+static processing_state show_publications(const SCHAR* pub_name, bool, const SCHAR* = NULL);
+static void show_pub_table(const SCHAR* table_name);
 static processing_state show_role(const SCHAR*, bool, const char* msg = NULL);
 static processing_state show_secclass(const char* object, const char* opt);
 static processing_state show_table(const SCHAR*, bool);
@@ -2044,7 +2046,7 @@ processing_state SHOW_metadata(const SCHAR* const* cmd, SCHAR** lcmd)
 			role, table, view, system, index, domain, exception,
 			filter, function, generator, grant, procedure, trigger,
 			check, database, comment, dependency, collation, security_class,
-			users, package, schema, map, wrong
+			users, package, publication, schema, map, wrong
 		};
 		ShowOptions(const optionsMap* inmap, size_t insize, int wrongval)
 			: OptionsBase(inmap, insize, wrongval)
@@ -2101,7 +2103,8 @@ processing_state SHOW_metadata(const SCHAR* const* cmd, SCHAR** lcmd)
 		{ShowOptions::users, "USERS", 0},
 		{ShowOptions::package, "PACKAGES", 4},
 		{ShowOptions::schema, "SCHEMAS", 4},
-		{ShowOptions::map, "MAPPING", 3}
+		{ShowOptions::map, "MAPPING", 3},
+		{ShowOptions::publication, "PUBLICATIONS", 3}
 	};
 
 	const ShowOptions showoptions(options, FB_NELEM(options), ShowOptions::wrong);
@@ -2266,6 +2269,10 @@ processing_state SHOW_metadata(const SCHAR* const* cmd, SCHAR** lcmd)
 				show_packages(NULL, true);
 				break;
 
+			case ShowOptions::publication:
+				show_publications(NULL, true);
+				break;
+
 			default:
 				return ps_ERR;
 			}
@@ -2285,6 +2292,8 @@ processing_state SHOW_metadata(const SCHAR* const* cmd, SCHAR** lcmd)
 			show_collations("", 1, msg, true);
 			IUTILS_msg_get(MSG_ROLES, msg);
 			show_role(NULL, true, msg);
+			IUTILS_msg_get(MSG_PUBLICATIONS, msg);
+			show_publications(NULL, true, msg);
 		}
 		break;
 
@@ -2726,6 +2735,24 @@ processing_state SHOW_metadata(const SCHAR* const* cmd, SCHAR** lcmd)
 				key = NO_MAP;
 			else
 				key = NO_MAPS;
+		}
+		break;
+
+	case ShowOptions::publication:
+		if (*cmd[2] == '"')
+		{
+			remove_delimited_double_quotes(lcmd[2]);
+			ret = show_publications(lcmd[2], false);
+		}
+		else
+			ret = show_publications(cmd[2], false);
+
+		if (ret == OBJECT_NOT_FOUND)
+		{
+			if (*cmd[2])
+				key = NO_PUBLICATION;
+			else
+				key = NO_PUBLICATIONS;
 		}
 		break;
 
@@ -3620,6 +3647,25 @@ static void show_db()
 		ISQL_errmsg(fbStatus);
 		return;
 	END_ERROR;
+
+	if (isqlGlob.major_ods >= ODS_VERSION13)
+	{
+		bool published = false;
+
+		FOR PUB IN RDB$PUBLICATIONS WITH
+			PUB.RDB$ACTIVE_FLAG > 0
+
+			published = true;
+			break;
+
+		END_FOR
+		ON_ERROR
+			ISQL_errmsg(fbStatus);
+			return;
+		END_ERROR;
+
+		isqlGlob.printf("Publication: %s%s", published ? "Enabled" : "Disabled", NEWLINE);
+	}
 }
 
 
@@ -5429,6 +5475,131 @@ static processing_state show_proc(const SCHAR* procname, bool sys)
 }
 
 
+static processing_state show_publications(const SCHAR* pub_name, bool sys, const SCHAR* msg)
+{
+/**************************************
+ *
+ *	s h o w _ p u b l i c a t i o n s
+ *
+ **************************************
+ *
+ * Functional description
+ *	Show publications.
+ *
+ **************************************/
+	if (isqlGlob.major_ods < ODS_VERSION13)
+		return OBJECT_NOT_FOUND;
+
+	bool first = true;
+
+	if (pub_name && *pub_name)
+	{
+		// List named publication
+
+		FOR PUB IN RDB$PUBLICATIONS WITH
+			PUB.RDB$PUBLICATION_NAME EQ pub_name
+
+			first = false;
+
+			fb_utils::exact_name(PUB.RDB$PUBLICATION_NAME);
+			isqlGlob.printf("%s: ", PUB.RDB$PUBLICATION_NAME);
+
+			const bool active_flag = (!PUB.RDB$ACTIVE_FLAG.NULL && PUB.RDB$ACTIVE_FLAG > 0);
+			isqlGlob.printf("%s", active_flag ? "Enabled" : "Disabled");
+
+			if (!PUB.RDB$AUTO_ENABLE.NULL && PUB.RDB$AUTO_ENABLE > 0)
+				isqlGlob.printf(", Auto-enable");
+
+			isqlGlob.printf(NEWLINE);
+
+		END_FOR
+		ON_ERROR
+			ISQL_errmsg(fbStatus);
+			return ps_ERR;
+		END_ERROR;
+	}
+	else
+	{
+		//  List all publications
+
+		FOR PUB IN RDB$PUBLICATIONS
+			SORTED BY PUB.RDB$PUBLICATION_NAME
+
+			const bool system_flag = (!PUB.RDB$SYSTEM_FLAG.NULL && PUB.RDB$SYSTEM_FLAG > 0);
+
+			if (system_flag == sys)
+			{
+				if (first && msg)
+					isqlGlob.printf("%s%s", msg, NEWLINE);
+
+				first = false;
+
+				isqlGlob.printf("%s%s", fb_utils::exact_name(PUB.RDB$PUBLICATION_NAME), NEWLINE);
+			}
+
+		END_FOR
+		ON_ERROR
+			ISQL_errmsg(fbStatus);
+			return ps_ERR;
+		END_ERROR;
+
+		if (!first)
+			isqlGlob.printf(NEWLINE);
+	}
+
+	if (first)
+		return (OBJECT_NOT_FOUND);
+
+	return (SKIP);
+}
+
+
+static void show_pub_table(const SCHAR* table_name)
+{
+/**************************************
+ *
+ *	s h o w _ p u b _ t a b l e
+ *
+ **************************************
+ *
+ * Functional description
+ *	Show publication status for the given table.
+ *
+ **************************************/
+	if (isqlGlob.major_ods < ODS_VERSION13)
+		return;
+
+	bool first = true;
+
+	if (table_name && *table_name)
+	{
+		FOR PTAB IN RDB$PUBLICATION_TABLES CROSS
+			PUB IN RDB$PUBLICATIONS OVER RDB$PUBLICATION_NAME WITH
+			PTAB.RDB$TABLE_NAME EQ table_name
+			SORTED BY DESCENDING PUB.RDB$SYSTEM_FLAG, PTAB.RDB$PUBLICATION_NAME
+
+			if (first)
+				isqlGlob.printf("Publications: %s", fb_utils::exact_name(PTAB.RDB$PUBLICATION_NAME));
+			else
+				isqlGlob.printf(", %s", fb_utils::exact_name(PTAB.RDB$PUBLICATION_NAME));
+
+			const bool active_flag = (!PUB.RDB$ACTIVE_FLAG.NULL && PUB.RDB$ACTIVE_FLAG > 0);
+			isqlGlob.printf(" (%s)", active_flag ? "Enabled" : "Disabled");
+
+			first = false;
+
+		END_FOR
+		ON_ERROR
+			ISQL_errmsg(fbStatus);
+			return;
+		END_ERROR;
+	}
+
+	if (!first)
+		isqlGlob.printf(NEWLINE);
+}
+
+
 bool SHOW_system_privileges(const char* role, const char* prefix, bool lf)
 {
 	bool first = true;
@@ -6121,6 +6292,10 @@ static processing_state show_table(const SCHAR* relation_name, bool isView)
 	// Do triggers
 
 	show_trigger(relation_name, false, false);
+
+	// Do publications
+
+	show_pub_table(relation_name);
 
 	if (first)
 		return (OBJECT_NOT_FOUND);
