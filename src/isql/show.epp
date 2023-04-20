@@ -5576,12 +5576,18 @@ static void show_pub_table(const SCHAR* table_name)
 		FOR PTAB IN RDB$PUBLICATION_TABLES CROSS
 			PUB IN RDB$PUBLICATIONS OVER RDB$PUBLICATION_NAME WITH
 			PTAB.RDB$TABLE_NAME EQ table_name
-			SORTED BY DESCENDING PUB.RDB$SYSTEM_FLAG, PTAB.RDB$PUBLICATION_NAME
+			SORTED BY DESCENDING PUB.RDB$SYSTEM_FLAG, PUB.RDB$PUBLICATION_NAME
+
+			const auto pub_name = fb_utils::exact_name(PUB.RDB$PUBLICATION_NAME);
 
 			if (first)
-				isqlGlob.printf("Publications: %s", fb_utils::exact_name(PTAB.RDB$PUBLICATION_NAME));
+			{
+				TEXT msg[MSG_LENGTH];
+				IUTILS_msg_get(MSG_PUBLICATIONS, msg);
+				isqlGlob.printf("%s %s", msg, pub_name);
+			}
 			else
-				isqlGlob.printf(", %s", fb_utils::exact_name(PTAB.RDB$PUBLICATION_NAME));
+				isqlGlob.printf(", %s", pub_name);
 
 			const bool active_flag = (!PUB.RDB$ACTIVE_FLAG.NULL && PUB.RDB$ACTIVE_FLAG > 0);
 			isqlGlob.printf(" (%s)", active_flag ? "Enabled" : "Disabled");
