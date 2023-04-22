@@ -233,6 +233,17 @@ static const struct
 
 const int MAX_PRIV_LIST = (6 + 2 + 7 + 2 + 6 + 2 + 6 + 2 + 6 + 2 + 10 + 2 + 6 + 2 + 5 + 2 + 4 + 1);
 
+const int PRIV_UPDATE_POS = 4;
+const int PRIV_REFERENCES_POS = 5;
+
+const int RELATION_PRIV_ALL = priv_SELECT | priv_INSERT | priv_UPDATE | priv_DELETE | priv_REFERENCES;
+
+struct PrivilegeFields
+{
+	const char* privilege;
+	string fields;
+};
+
 // Added support to display FORCED WRITES status. - PR 27-NOV-2001
 // Added support to display transaction info when next_transaction id is fixed.
 // Added support to display ODS version. CVC 26-Aug-2004.
@@ -797,6 +808,56 @@ static void set_grantee(int user_type, const char* SQL_identifier, char* user_st
 }
 
 
+static USHORT convert_privilege_to_code(char privilege)
+{
+	switch (privilege)
+	{
+	case 'S':
+		return priv_SELECT;
+	case 'I':
+		return priv_INSERT;
+	case 'U':
+		return priv_UPDATE;
+	case 'D':
+		return priv_DELETE;
+	case 'R':
+		return priv_REFERENCES;
+	case 'X':
+	case 'G':
+		// Execute should not be here
+		return 0;
+	}
+
+	return priv_UNKNOWN;
+}
+
+
+static void make_privilege_string_with_fields(USHORT priv_flags,
+											  const PrivilegeFields* priv_fields,
+											  int priv_fields_count,
+											  char* priv_string,
+											  string& out_result)
+{
+	out_result = "";
+
+	if (priv_flags)
+	{
+		make_priv_string(priv_flags, priv_string, false);
+		out_result.assign(priv_string);
+	}
+
+	for (int i = 0; i < priv_fields_count; i++)
+	{
+		if (priv_fields[i].fields.isEmpty())
+			continue;
+
+		if (!out_result.isEmpty())
+			out_result += ", ";
+		out_result += priv_fields[i].privilege + (" (" + priv_fields[i].fields + ")");
+	}
+}
+
+
 processing_state SHOW_grants2 (const SCHAR* object,
 				  const SCHAR* terminator,
 				  ObjectType obj_type,
@@ -823,14 +884,19 @@ processing_state SHOW_grants2 (const SCHAR* object,
  *
  **************************************/
 	BASED_ON RDB$USER_PRIVILEGES.RDB$USER prev_user;
-	BASED_ON RDB$USER_PRIVILEGES.RDB$GRANT_OPTION prev_option;
-	BASED_ON RDB$USER_PRIVILEGES.RDB$FIELD_NAME prev_field;
-	BASED_ON RDB$USER_PRIVILEGES.RDB$USER_TYPE prev_user_type;
+	BASED_ON RDB$USER_PRIVILEGES.RDB$GRANT_OPTION prev_grant_option;
 	BASED_ON RDB$USER_PRIVILEGES.RDB$GRANTOR prev_grantor;
-	BASED_ON RDB$USER_PRIVILEGES.RDB$OBJECT_TYPE prev_object_type;
 	SCHAR buf_grantor[sizeof(prev_grantor) + 20];
 	SCHAR user_string[QUOTED_NAME_SIZE + 20];
 	SCHAR obj_string[QUOTED_NAME_SIZE + 20];
+
+	PrivilegeFields priv_fields[] =
+	{
+		{privs[PRIV_UPDATE_POS].priv_string, ""},
+		{privs[PRIV_REFERENCES_POS].priv_string, ""}
+	};
+	const int priv_fields_count = FB_NELEM(priv_fields);
+
 	bool first = true;
 
 	if (!*object)
@@ -838,17 +904,14 @@ processing_state SHOW_grants2 (const SCHAR* object,
 
 	// Query against user_privileges instead of looking at rdb$security_classes
 
-	prev_option = -1;
+	prev_grant_option = -1;
 	prev_user[0] = '\0';
-	prev_field[0] = '\0';
 	prev_grantor[0] = '\0';
-	prev_user_type = -1;
-	prev_object_type = -1;
 	char priv_string[MAX_PRIV_LIST] = "";
-	char col_string[BUFFER_LENGTH512] = "";
+	string col_string;
 	char with_option[19] = "";
-	USHORT priv_flags = 0;
 	SSHORT prev_field_null = -1;
+	USHORT priv_flags = 0;
 
 	if (obj_type == obj_relation || obj_type == obj_any)
 	{
@@ -865,7 +928,7 @@ processing_state SHOW_grants2 (const SCHAR* object,
 				REL.RDB$RELATION_NAME EQ object AND
 				PRV.RDB$PRIVILEGE     NE 'M'    AND
 				REL.RDB$OWNER_NAME    NE PRV.RDB$USER
-				SORTED BY PRV.RDB$USER, PRV.RDB$FIELD_NAME, PRV.RDB$GRANT_OPTION;
+				SORTED BY PRV.RDB$USER, PRV.RDB$GRANT_OPTION, PRV.RDB$FIELD_NAME;
 
 				fb_utils::exact_name(PRV.RDB$USER);
 
@@ -879,21 +942,13 @@ processing_state SHOW_grants2 (const SCHAR* object,
 
 				// Print a new grant statement for each new user or change of option
 
-				if ((prev_user[0] && strcmp (prev_user, PRV.RDB$USER)) ||
-					(prev_field_null != -1 &&
-					 prev_field_null != PRV.RDB$FIELD_NAME.NULL) ||
-					(!prev_field_null && strcmp (prev_field, PRV.RDB$FIELD_NAME)) ||
-					(prev_option != -1 && prev_option != PRV.RDB$GRANT_OPTION) ||
-					(prev_user_type != -1 && prev_user_type != PRV.RDB$USER_TYPE) ||
-					(prev_grantor[0] && strcmp (prev_grantor, PRV.RDB$GRANTOR)) ||
-					(prev_object_type != -1 && prev_object_type != PRV.RDB$OBJECT_TYPE))
+				if (prev_grant_option != -1 &&
+					(strcmp(prev_user, PRV.RDB$USER) ||
+					prev_grant_option != PRV.RDB$GRANT_OPTION ||
+					strcmp(prev_grantor, PRV.RDB$GRANTOR)))
 				{
-
-					make_priv_string(priv_flags, priv_string, false);
-
 					if (first && optional_msg)
 						isqlGlob.prints(optional_msg);
-
 					first = false;
 
 					if (mangle && isqlGlob.db_SQL_dialect > SQL_DIALECT_V6_TRANSITION)
@@ -901,29 +956,34 @@ processing_state SHOW_grants2 (const SCHAR* object,
 					else
 						strcpy(SQL_identifier, object);
 
-					isqlGlob.printf("GRANT %s%s ON %s TO %s%s%s%s%s",
-						priv_string, col_string,
+					if (prev_grant_option)
+						strcpy(with_option, " WITH GRANT OPTION");
+
+					string combine_privileges = "";
+					make_privilege_string_with_fields(priv_flags, priv_fields, priv_fields_count,
+						priv_string, combine_privileges);
+
+					isqlGlob.printf("GRANT %s ON %s TO %s%s%s%s%s",
+						combine_privileges.c_str(),
 						SQL_identifier,
 						user_string, with_option, granted_by(buf_grantor, prev_grantor, false),
 						terminator, NEWLINE);
 
-					// re-initialize strings
-
-					priv_string[0] = '\0';
-					with_option[0] = '\0';
-					col_string[0] = '\0';
+					// re-initialize
 					priv_flags = 0;
+					with_option[0] = '\0';
+					priv_string[0] = '\0';
+					col_string = "";
+					for (int i = 0; i < priv_fields_count; i++)
+						priv_fields[i].fields = "";
 				}
 
 				// At each row, store this value for the next compare of contol break
 
 				strcpy (prev_user, PRV.RDB$USER);
-				prev_option = PRV.RDB$GRANT_OPTION;
+				prev_grant_option = PRV.RDB$GRANT_OPTION;
 				prev_field_null = PRV.RDB$FIELD_NAME.NULL;
-				strcpy (prev_field, PRV.RDB$FIELD_NAME);
-				prev_user_type = PRV.RDB$USER_TYPE;
 				strcpy (prev_grantor, PRV.RDB$GRANTOR);
-				prev_object_type = PRV.RDB$OBJECT_TYPE;
 
 				switch (PRV.RDB$USER_TYPE)
 				{
@@ -948,37 +1008,14 @@ processing_state SHOW_grants2 (const SCHAR* object,
 				set_grantee(PRV.RDB$USER_TYPE, SQL_identifier, user_string);
 
 				// Only the first character is used for permissions
-
 				const char c = PRV.RDB$PRIVILEGE[0];
 
-				switch (c)
-				{
-				case 'S':
-					priv_flags |= priv_SELECT;
-				break;
-				case 'I':
-					priv_flags |= priv_INSERT;
-					break;
-				case 'U':
-					priv_flags |= priv_UPDATE;
-					break;
-				case 'D':
-					priv_flags |= priv_DELETE;
-					break;
-				case 'R':
-					priv_flags |= priv_REFERENCES;
-					break;
-				case 'X':
-				case 'G':
-					// Execute should not be here -- special handling below
-					break;
-				default:
-					priv_flags |= priv_UNKNOWN;
-				}
-
 				// Column level privileges for update and references only
-				if (PRV.RDB$FIELD_NAME.NULL) {
-					*col_string = '\0';
+				if (PRV.RDB$FIELD_NAME.NULL)
+				{
+					col_string = "";
+					priv_flags |= convert_privilege_to_code(c);
+					continue;
 				}
 				else
 				{
@@ -986,15 +1023,23 @@ processing_state SHOW_grants2 (const SCHAR* object,
 					if (mangle && isqlGlob.db_SQL_dialect > SQL_DIALECT_V6_TRANSITION)
 					{
 						IUTILS_copy_SQL_id(PRV.RDB$FIELD_NAME, SQL_identifier, DBL_QUOTE);
-						sprintf(col_string, " (%s)", SQL_identifier);
+						col_string = SQL_identifier;
 					}
-					else {
-						sprintf(col_string, " (%s)", PRV.RDB$FIELD_NAME);
+					else
+					{
+						col_string = PRV.RDB$FIELD_NAME;
 					}
 				}
 
-				if (PRV.RDB$GRANT_OPTION)
-					strcpy(with_option, " WITH GRANT OPTION");
+				for (int i = 0; i < priv_fields_count; i++)
+				{
+					if (c == priv_fields[i].privilege[0])
+					{
+						priv_fields[i].fields += priv_fields[i].fields.isEmpty() ? col_string
+							: ", " + col_string;
+						break;
+					}
+				}
 
 			END_FOR
 			ON_ERROR
@@ -1004,9 +1049,8 @@ processing_state SHOW_grants2 (const SCHAR* object,
 
 			// Print last case if there was anything to print
 
-			if (prev_option != -1)
+			if (prev_grant_option != -1)
 			{
-				make_priv_string(priv_flags, priv_string, false);
 				if (first && optional_msg)
 					isqlGlob.prints(optional_msg);
 				first = false;
@@ -1016,10 +1060,18 @@ processing_state SHOW_grants2 (const SCHAR* object,
 				else
 					strcpy(SQL_identifier, object);
 
-				isqlGlob.printf("GRANT %s%s ON %s TO %s%s%s%s%s",
-					priv_string, col_string,
+				if (prev_grant_option)
+					strcpy(with_option, " WITH GRANT OPTION");
+
+				string combine_privileges;
+				make_privilege_string_with_fields(priv_flags, priv_fields, priv_fields_count,
+					priv_string, combine_privileges);
+
+				isqlGlob.printf("GRANT %s ON %s TO %s%s%s%s%s",
+					combine_privileges.c_str(),
 					SQL_identifier,
-					user_string, with_option, granted_by(buf_grantor, prev_grantor, false), terminator, NEWLINE);
+					user_string, with_option, granted_by(buf_grantor, prev_grantor, false),
+					terminator, NEWLINE);
 			}
 
 		END_FOR
@@ -2808,6 +2860,12 @@ static void make_priv_string(USHORT flags, char* string, bool useAny)
  *	string list.
  *
  **************************************/
+	if (flags == RELATION_PRIV_ALL)
+	{
+		strcat(string, "ALL");
+		return;
+	}
+
 	for (int i = 0; privs[i].priv_string; i++)
 	{
 		if (flags & privs[i].priv_flag)
