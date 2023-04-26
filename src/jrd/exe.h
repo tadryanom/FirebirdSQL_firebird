@@ -36,6 +36,7 @@
 #include "../jrd/Relation.h"
 #include "../common/classes/array.h"
 #include "../jrd/MetaName.h"
+#include "../common/classes/auto.h"
 #include "../common/classes/fb_pair.h"
 #include "../common/classes/NestConst.h"
 
@@ -668,6 +669,17 @@ inline void CompilerScratch::csb_repeat::deactivate()
 {
 	csb_flags &= ~csb_active;
 }
+
+
+class AutoSetCurrentCursorProfileId : private Firebird::AutoSetRestore<ULONG>
+{
+public:
+	explicit AutoSetCurrentCursorProfileId(CompilerScratch* csb)
+		: AutoSetRestore(&csb->csb_currentCursorProfileId,
+			(csb->csb_currentCursorProfileId == 0 ? csb->csb_nextCursorProfileId++ : csb->csb_currentCursorProfileId))
+	{
+	}
+};
 
 
 class StatusXcp

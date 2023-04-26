@@ -43,18 +43,25 @@ namespace Jrd
 			INVARIANT = 2
 		};
 
-		Select(const RecordSource* source, const RseNode* rse,
-			   ULONG line = 0, ULONG column = 0, const MetaName& cursorName = "")
-			: m_top(source), m_rse(rse), m_cursorName(cursorName),
-			  m_line(line), m_column(column)
-		{}
+		Select(const RecordSource* source, const RseNode* rse, ULONG line = 0, ULONG column = 0,
+			const MetaName& cursorName = {});
 
 		virtual ~Select()
 		{}
 
+		ULONG getCursorProfileId() const
+		{
+			return m_cursorProfileId;
+		}
+
 		const RecordSource* getAccessPath() const
 		{
 			return m_top;
+		}
+
+		const MetaName& getName() const
+		{
+			return m_cursorName;
 		}
 
 		ULONG getLine() const
@@ -74,11 +81,15 @@ namespace Jrd
 		virtual void close(thread_db* tdbb) const = 0;
 
 	protected:
+		void prepareProfiler(thread_db* tdbb, Request* request) const;
+
+	protected:
 		const RecordSource* const m_top;
 		const RseNode* const m_rse;
-		MetaName m_cursorName;	// optional name for explicit PSQL cursors
 
 	private:
+		const ULONG m_cursorProfileId;
+		MetaName m_cursorName;	// optional name for explicit PSQL cursors
 		ULONG m_line = 0;
 		ULONG m_column = 0;
 	};
@@ -125,26 +136,12 @@ namespace Jrd
 
 		void checkState(Request* request) const;
 
-		ULONG getCursorProfileId() const
-		{
-			return m_cursorProfileId;
-		}
-
 		bool isUpdateCounters() const
 		{
 			return m_updateCounters;
 		}
 
-		const MetaName& getName() const
-		{
-			return m_cursorName;
-		}
-
 	private:
-		void prepareProfiler(thread_db* tdbb, Request* request) const;
-
-	private:
-		const ULONG m_cursorProfileId;
 		ULONG m_impure;
 		const bool m_updateCounters;
 	};

@@ -11049,7 +11049,6 @@ DmlNode* SubQueryNode::parse(thread_db* tdbb, MemoryPool& pool, CompilerScratch*
 	SubQueryNode* node = FB_NEW_POOL(pool) SubQueryNode(pool, (blrOp == blr_from ? blr_via : blrOp));
 
 	node->rse = PAR_rse(tdbb, csb);
-
 	node->rse->flags |= RseNode::FLAG_SUB_QUERY;
 
 	if (blrOp != blr_count)
@@ -11112,6 +11111,9 @@ ValueExprNode* SubQueryNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 	SubQueryNode* node = FB_NEW_POOL(dsqlScratch->getPool()) SubQueryNode(dsqlScratch->getPool(), blrOp, rse,
 		rse->dsqlSelectList->items[0], NullNode::instance());
 
+	node->line = line;
+	node->column = column;
+
 	// Finish off by cleaning up contexts.
 	dsqlScratch->context->clear(base);
 
@@ -11126,7 +11128,10 @@ void SubQueryNode::setParameterName(dsql_par* parameter) const
 void SubQueryNode::genBlr(DsqlCompilerScratch* dsqlScratch)
 {
 	dsqlScratch->appendUChar(blrOp);
+
+	dsqlScratch->putDebugSrcInfo(line, column);
 	GEN_expr(dsqlScratch, dsqlRse);
+
 	GEN_expr(dsqlScratch, value1);
 	GEN_expr(dsqlScratch, value2);
 }
@@ -11341,6 +11346,8 @@ ValueExprNode* SubQueryNode::pass2(thread_db* tdbb, CompilerScratch* csb)
 		csb->csb_invariants.push(&impureOffset);
 	}
 
+	AutoSetCurrentCursorProfileId autoSetCurrentCursorProfileId(csb);
+
 	rse->pass2Rse(tdbb, csb);
 
 	ValueExprNode::pass2(tdbb, csb);
@@ -11351,6 +11358,7 @@ ValueExprNode* SubQueryNode::pass2(thread_db* tdbb, CompilerScratch* csb)
 		dsc desc;
 		getDesc(tdbb, csb, &desc);
 	}
+
 	if (blrOp == blr_average && !(nodFlags & FLAG_DECFLOAT))
 		nodFlags |= FLAG_DOUBLE;
 

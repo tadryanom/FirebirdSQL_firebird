@@ -35,9 +35,9 @@
 namespace Jrd {
 
 class Attachment;
-class Cursor;
 class Request;
 class RecordSource;
+class Select;
 class thread_db;
 
 class ProfilerListener;
@@ -123,7 +123,7 @@ public:
 	SINT64 startSession(thread_db* tdbb, Nullable<SLONG> flushInterval,
 		const Firebird::PathName& pluginName, const Firebird::string& description, const Firebird::string& options);
 
-	void prepareCursor(thread_db* tdbb, Request* request, const Cursor* cursor);
+	void prepareCursor(thread_db* tdbb, Request* request, const Select* select);
 	void prepareRecSource(thread_db* tdbb, Request* request, const RecordSource* rsb);
 	void onRequestFinish(Request* request, Stats& stats);
 	void beforePsqlLineColumn(Request* request, ULONG line, ULONG column);

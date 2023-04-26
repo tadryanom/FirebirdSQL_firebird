@@ -117,8 +117,7 @@ public:
 	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
 	virtual bool sameAs(const ExprNode* other, bool ignoreStreams) const;
 	virtual BoolExprNode* pass1(thread_db* tdbb, CompilerScratch* csb);
-	virtual void pass2Boolean1(thread_db* tdbb, CompilerScratch* csb);
-	virtual void pass2Boolean2(thread_db* tdbb, CompilerScratch* csb);
+	virtual void pass2Boolean(thread_db* tdbb, CompilerScratch* csb, std::function<void ()> process);
 	virtual bool execute(thread_db* tdbb, Request* request) const;
 
 private:
@@ -168,7 +167,7 @@ public:
 
 	virtual BoolExprNode* copy(thread_db* tdbb, NodeCopier& copier) const;
 	virtual BoolExprNode* pass1(thread_db* tdbb, CompilerScratch* csb);
-	virtual void pass2Boolean2(thread_db* tdbb, CompilerScratch* csb);
+	virtual void pass2Boolean(thread_db* tdbb, CompilerScratch* csb, std::function<void ()> process);
 	virtual bool execute(thread_db* tdbb, Request* request) const;
 
 public:
@@ -209,7 +208,7 @@ public:
 class RseBoolNode final : public TypedNode<BoolExprNode, ExprNode::TYPE_RSE_BOOL>
 {
 public:
-	RseBoolNode(MemoryPool& pool, UCHAR aBlrOp, RecordSourceNode* aDsqlRse = NULL);
+	RseBoolNode(MemoryPool& pool, UCHAR aBlrOp, RecordSourceNode* aDsqlRse = nullptr);
 
 	static DmlNode* parse(thread_db* tdbb, MemoryPool& pool, CompilerScratch* csb, const UCHAR blrOp);
 
@@ -251,8 +250,7 @@ public:
 	virtual bool dsqlMatch(DsqlCompilerScratch* dsqlScratch, const ExprNode* other, bool ignoreMapCast) const;
 	virtual bool sameAs(const ExprNode* other, bool ignoreStreams) const;
 	virtual BoolExprNode* pass1(thread_db* tdbb, CompilerScratch* csb);
-	virtual void pass2Boolean1(thread_db* tdbb, CompilerScratch* csb);
-	virtual void pass2Boolean2(thread_db* tdbb, CompilerScratch* csb);
+	virtual void pass2Boolean(thread_db* tdbb, CompilerScratch* csb, std::function<void ()> process);
 	virtual bool execute(thread_db* tdbb, Request* request) const;
 
 private:

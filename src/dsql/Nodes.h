@@ -731,40 +731,37 @@ public:
 	{
 	}
 
-	virtual Kind getKind()
+	Kind getKind() override
 	{
 		return KIND_BOOLEAN;
 	}
 
-	virtual BoolExprNode* dsqlPass(DsqlCompilerScratch* dsqlScratch)
+	BoolExprNode* dsqlPass(DsqlCompilerScratch* dsqlScratch) override
 	{
 		ExprNode::dsqlPass(dsqlScratch);
 		return this;
 	}
 
-	virtual BoolExprNode* dsqlFieldRemapper(FieldRemapper& visitor)
+	BoolExprNode* dsqlFieldRemapper(FieldRemapper& visitor) override
 	{
 		ExprNode::dsqlFieldRemapper(visitor);
 		return this;
 	}
 
-	virtual BoolExprNode* pass1(thread_db* tdbb, CompilerScratch* csb)
+	BoolExprNode* pass1(thread_db* tdbb, CompilerScratch* csb) override
 	{
 		ExprNode::pass1(tdbb, csb);
 		return this;
 	}
 
-	virtual BoolExprNode* pass2(thread_db* tdbb, CompilerScratch* csb);
+	BoolExprNode* pass2(thread_db* tdbb, CompilerScratch* csb) override final;
 
-	virtual void pass2Boolean1(thread_db* /*tdbb*/, CompilerScratch* /*csb*/)
+	virtual void pass2Boolean(thread_db* /*tdbb*/, CompilerScratch* /*csb*/, std::function<void ()> process)
 	{
+		process();
 	}
 
-	virtual void pass2Boolean2(thread_db* /*tdbb*/, CompilerScratch* /*csb*/)
-	{
-	}
-
-	virtual BoolExprNode* copy(thread_db* tdbb, NodeCopier& copier) const = 0;
+	BoolExprNode* copy(thread_db* tdbb, NodeCopier& copier) const override = 0;
 	virtual bool execute(thread_db* tdbb, Request* request) const = 0;
 };
 

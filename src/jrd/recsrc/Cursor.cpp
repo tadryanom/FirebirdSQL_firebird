@@ -52,6 +52,16 @@ namespace
 // Select implementation
 // ---------------------
 
+Select::Select(const RecordSource* source, const RseNode* rse, ULONG line, ULONG column, const MetaName& cursorName)
+	: m_top(source),
+	  m_rse(rse),
+	  m_cursorProfileId(source->getCursorProfileId()),
+	  m_cursorName(cursorName),
+	  m_line(line),
+	  m_column(column)
+{
+}
+
 void Select::initializeInvariants(Request* request) const
 {
 	// Initialize dependent invariants, if any
@@ -109,18 +119,32 @@ void Select::printPlan(thread_db* tdbb, string& plan, bool detailed) const
 	m_top->print(tdbb, plan, detailed, 0, true);
 }
 
+void Select::prepareProfiler(thread_db* tdbb, Request* request) const
+{
+	const auto attachment = tdbb->getAttachment();
+
+	const auto profilerManager = attachment->isProfilerActive() && !request->hasInternalStatement() ?
+		attachment->getProfilerManager(tdbb) :
+		nullptr;
+
+	if (profilerManager)
+		profilerManager->prepareCursor(tdbb, request, this);
+}
+
 // ---------------------
 // SubQuery implementation
 // ---------------------
 
 SubQuery::SubQuery(const RecordSource* rsb, const RseNode* rse)
-	: Select(rsb, rse)
+	: Select(rsb, rse, rse->line, rse->column)
 {
 	fb_assert(m_top);
 }
 
 void SubQuery::open(thread_db* tdbb) const
 {
+	prepareProfiler(tdbb, tdbb->getRequest());
+
 	initializeInvariants(tdbb->getRequest());
 	m_top->open(tdbb);
 }
@@ -135,6 +159,8 @@ bool SubQuery::fetch(thread_db* tdbb) const
 	if (!validate(tdbb))
 		return false;
 
+	prepareProfiler(tdbb, tdbb->getRequest());
+
 	return m_top->getRecord(tdbb);
 }
 
@@ -146,7 +172,6 @@ bool SubQuery::fetch(thread_db* tdbb) const
 Cursor::Cursor(CompilerScratch* csb, const RecordSource* rsb, const RseNode* rse,
 			   bool updateCounters, ULONG line, ULONG column, const MetaName& name)
 	: Select(rsb, rse, line, column, name),
-	  m_cursorProfileId(rsb->getCursorProfileId()),
 	  m_updateCounters(updateCounters)
 {
 	fb_assert(m_top);
@@ -409,18 +434,6 @@ void Cursor::checkState(Request* request) const
 	{
 		status_exception::raise(
 			Arg::Gds(isc_cursor_not_positioned) <<
-			Arg::Str(m_cursorName));
+			getName());
 	}
-}
-
-void Cursor::prepareProfiler(thread_db* tdbb, Request* request) const
-{
-	const auto attachment = tdbb->getAttachment();
-
-	const auto profilerManager = attachment->isProfilerActive() && !request->hasInternalStatement() ?
-		attachment->getProfilerManager(tdbb) :
-		nullptr;
-
-	if (profilerManager)
-		profilerManager->prepareCursor(tdbb, request, this);
 }

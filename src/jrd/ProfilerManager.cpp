@@ -27,6 +27,7 @@
 #include "../jrd/tra.h"
 #include "../jrd/ids.h"
 #include "../jrd/recsrc/Cursor.h"
+#include "../dsql/BoolNodes.h"
 #include "../jrd/dpm_proto.h"
 #include "../jrd/lck_proto.h"
 #include "../jrd/met_proto.h"
@@ -464,20 +465,20 @@ SINT64 ProfilerManager::startSession(thread_db* tdbb, Nullable<SLONG> flushInter
 	return currentSession->pluginSession->getId();
 }
 
-void ProfilerManager::prepareCursor(thread_db* tdbb, Request* request, const Cursor* cursor)
+void ProfilerManager::prepareCursor(thread_db* tdbb, Request* request, const Select* select)
 {
 	auto profileStatement = getStatement(request);
 
 	if (!profileStatement)
 		return;
 
-	auto cursorId = cursor->getCursorProfileId();
+	auto cursorId = select->getCursorProfileId();
 
 	if (profileStatement->definedCursors.exist(cursorId))
 		return;
 
 	currentSession->pluginSession->defineCursor(profileStatement->id, cursorId,
-		cursor->getName().nullStr(), cursor->getLine(), cursor->getColumn());
+		select->getName().nullStr(), select->getLine(), select->getColumn());
 
 	profileStatement->definedCursors.add(cursorId);
 }

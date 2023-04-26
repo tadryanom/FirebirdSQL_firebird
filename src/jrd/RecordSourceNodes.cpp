@@ -2754,6 +2754,8 @@ RseNode* RseNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 RseNode* RseNode::copy(thread_db* tdbb, NodeCopier& copier) const
 {
 	RseNode* newSource = FB_NEW_POOL(*tdbb->getDefaultPool()) RseNode(*tdbb->getDefaultPool());
+	newSource->line = line;
+	newSource->column = column;
 
 	for (const auto sub : rse_relations)
 		newSource->rse_relations.add(sub->copy(tdbb, copier));
