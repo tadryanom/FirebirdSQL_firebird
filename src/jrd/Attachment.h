@@ -277,12 +277,10 @@ public:
 			return totalLocksCounter;
 		}
 
-#ifdef DEV_BUILD
 		bool locked() const
 		{
 			return threadId == getThreadId();
 		}
-#endif
 
 		~Sync()
 		{
@@ -303,8 +301,6 @@ public:
 		volatile FB_UINT64 totalLocksCounter;
 		int currentLocksCounter;
 	};
-
-	typedef Firebird::RaiiLockGuard<StableAttachmentPart> SyncGuard;
 
 	explicit StableAttachmentPart(Attachment* handle)
 		: att(handle), jAtt(NULL), shutError(0)
@@ -945,9 +941,13 @@ public:
 		: m_attachments(p)
 	{}
 
+	AttachmentsRefHolder()
+		: m_attachments(*MemoryPool::getContextPool())
+	{}
+
 	AttachmentsRefHolder& operator=(const AttachmentsRefHolder& other)
 	{
-		this->~AttachmentsRefHolder();
+		clear();
 
 		for (FB_SIZE_T i = 0; i < other.m_attachments.getCount(); i++)
 			add(other.m_attachments[i]);
@@ -955,12 +955,17 @@ public:
 		return *this;
 	}
 
-	~AttachmentsRefHolder()
+	void clear()
 	{
 		while (m_attachments.hasData())
 		{
 			m_attachments.pop()->release();
 		}
+	}
+
+	~AttachmentsRefHolder()
+	{
+		clear();
 	}
 
 	void add(StableAttachmentPart* jAtt)
@@ -970,11 +975,6 @@ public:
 			jAtt->addRef();
 			m_attachments.add(jAtt);
 		}
-	}
-
-	void remove(Iterator& iter)
-	{
-		iter.remove();
 	}
 
 	bool hasData() const
