@@ -392,8 +392,9 @@ void SortedStream::mapData(thread_db* tdbb, Request* request, UCHAR* data) const
 					if (!refetchStreams.exist(item.stream))
 						refetchStreams.add(item.stream);
 				}
-				else // delay refetch until really necessary
-					rpb->rpb_runtime_flags |= RPB_refetch;
+
+				// Ensure records are also refetched before update/delete
+				rpb->rpb_runtime_flags |= RPB_refetch;
 			}
 
 			continue;
