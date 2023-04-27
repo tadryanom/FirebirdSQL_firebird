@@ -12,6 +12,7 @@ aclocal.m4
 *.diff
 config.status
 configure
+config*~
 libtool
 *.log
 *.bak
