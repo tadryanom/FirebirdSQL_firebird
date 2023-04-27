@@ -3645,9 +3645,21 @@ ResultSet* Statement::openCursor(CheckStatusWrapper* status, Firebird::ITransact
 		sqldata->p_sqldata_timeout = statement->rsr_timeout;
 		sqldata->p_sqldata_cursor_flags = flags;
 
-		send_partial_packet(port, packet);
-		defer_packet(port, packet, true);
-		message->msg_address = NULL;
+		{
+			Firebird::Cleanup msgClean([&message] {
+				message->msg_address = NULL;
+			});
+
+			if (statement->rsr_flags.test(Rsr::DEFER_EXECUTE))
+			{
+				send_partial_packet(port, packet);
+				defer_packet(port, packet, true);
+			}
+			else
+			{
+				send_and_receive(status, rdb, packet);
+			}
+		}
 
 		ResultSet* rs = FB_NEW ResultSet(this, outFormat, flags);
 		rs->addRef();
