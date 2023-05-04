@@ -905,7 +905,7 @@ void EXE_start(thread_db* tdbb, Request* request, jrd_tra* transaction)
 	for (auto& rpb : request->req_rpb)
 		rpb.rpb_runtime_flags = 0;
 
-	request->req_profiler_time = 0;
+	request->req_profiler_perf_counter = 0;
 
 	// Store request start time for timestamp work
 	request->validateTimeStamp();
@@ -999,7 +999,7 @@ void EXE_unwind(thread_db* tdbb, Request* request)
 
 		if (attachment->isProfilerActive() && !request->hasInternalStatement())
 		{
-			ProfilerManager::Stats stats(request->req_profiler_time);
+			ProfilerManager::Stats stats(request->req_profiler_perf_counter);
 			attachment->getProfilerManager(tdbb)->onRequestFinish(request, stats);
 		}
 	}
@@ -1442,7 +1442,7 @@ const StmtNode* EXE_looper(thread_db* tdbb, Request* request, const StmtNode* no
 			if (exeState.exit)
 			{
 				if (attachment->isProfilerActive() && !request->hasInternalStatement())
-					request->req_profiler_time += profilerCallAfterPsqlLineColumn() - initialPerfCounter;
+					request->req_profiler_perf_counter += profilerCallAfterPsqlLineColumn() - initialPerfCounter;
 
 				return node;
 			}
@@ -1485,7 +1485,7 @@ const StmtNode* EXE_looper(thread_db* tdbb, Request* request, const StmtNode* no
 	} // while()
 
 	if (attachment->isProfilerActive() && !request->hasInternalStatement())
-		request->req_profiler_time += profilerCallAfterPsqlLineColumn() - initialPerfCounter;
+		request->req_profiler_perf_counter += profilerCallAfterPsqlLineColumn() - initialPerfCounter;
 
 	request->adjustCallerStats();
 
@@ -1514,7 +1514,7 @@ const StmtNode* EXE_looper(thread_db* tdbb, Request* request, const StmtNode* no
 
 		if (attachment->isProfilerActive() && !request->hasInternalStatement())
 		{
-			ProfilerManager::Stats stats(request->req_profiler_time);
+			ProfilerManager::Stats stats(request->req_profiler_perf_counter);
 			attachment->getProfilerManager(tdbb)->onRequestFinish(request, stats);
 		}
 	}
