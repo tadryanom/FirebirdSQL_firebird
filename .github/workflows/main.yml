@@ -493,6 +493,7 @@ jobs:
           target: google_apis
           ndk: 25.1.8937393
           emulator-options: -no-window -noaudio -no-boot-anim -camera-back none -port 5554
+          emulator-boot-timeout: 900
           script: |
             echo "Generated AVD snapshot for caching."
 
@@ -505,6 +506,7 @@ jobs:
           target: google_apis
           ndk: 25.1.8937393
           emulator-options: -no-snapshot-save -no-window -noaudio -no-boot-anim -camera-back none -port 5554
+          emulator-boot-timeout: 900
           script: |
             sleep 20
             adb wait-for-device
