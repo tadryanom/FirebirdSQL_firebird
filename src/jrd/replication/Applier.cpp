@@ -1079,16 +1079,14 @@ bool Applier::lookupRecord(thread_db* tdbb,
 
 	if (lookupKey(tdbb, relation, idx))
 	{
-		temporary_key key;
-		const auto result = BTR_key(tdbb, relation, record, &idx, &key,
-			(idx.idx_flags & idx_unique) ? INTL_KEY_UNIQUE : INTL_KEY_SORT);
-		if (result != idx_e_ok)
+		IndexKey key(tdbb, relation, &idx);
+		if (const auto result = key.compose(record))
 		{
 			IndexErrorContext context(relation, &idx);
 			context.raise(tdbb, result, record);
 		}
 
-		IndexRetrieval retrieval(relation, &idx, idx.idx_count, &key);
+		IndexRetrieval retrieval(relation, &idx, idx.idx_count, key);
 		retrieval.irb_generic = irb_equality | (idx.idx_flags & idx_descending ? irb_descending : 0);
 
 		BTR_evaluate(tdbb, &retrieval, &m_bitmap, NULL);

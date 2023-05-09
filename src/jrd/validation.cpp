@@ -1080,7 +1080,10 @@ void Validation::cleanup()
 	vdr_idx_records = NULL;
 
 	for (auto& item : vdr_cond_idx)
+	{
 		delete item.m_recs;
+		delete item.m_condition;
+	}
 
 	vdr_cond_idx.clear();
 }
@@ -1893,7 +1896,10 @@ Validation::RTN Validation::walk_data_page(jrd_rel* relation, ULONG page_number,
 				{
 					if (getInfo.m_desc.idx_flags & idx_condition)
 					{
-						if (BTR_check_condition(vdr_tdbb, &getInfo.m_desc, rpb.rpb_record))
+						if (!getInfo.m_condition)
+							getInfo.m_condition = FB_NEW_POOL(*pool) IndexCondition(vdr_tdbb, &getInfo.m_desc);
+
+						if (getInfo.m_condition->evaluate(rpb.rpb_record))
 							RBM_SET(pool, &getInfo.m_recs, recno);
 					}
 				}
@@ -3076,7 +3082,10 @@ Validation::RTN Validation::walk_relation(jrd_rel* relation)
 	// walking relation. System relations have no conditional indices.
 
 	for (auto& item : vdr_cond_idx)
+	{
 		delete item.m_recs;
+		delete item.m_condition;
+	}
 
 	vdr_cond_idx.clear();
 
